@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!-- This document forms the dockable panel. The button is the <input> tag below. The <style> formats the button. 
+
+		The extendscript is called through the <script type="text/javascript"> tag, which then routes it to use the adobe_cep_.evalScript to interpret that Javascript into Extendscript -->
+
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Alert Panel</title>
+		<script src="./ext.js"></script>
+		<script src="./lib/CSInterface.js"></script>
+		<script src="./lib/jquery-1.9.1.js"></script>
+		<script src="./lib/Vulcan.js"></script>
+		<link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css">		
+		<script type="text/javascript">
+			
+			function runAll() {
+				var cs = new CSInterface;
+								
+				cs.evalScript('$.runScript.alert()')
+			}
+
+			function onLoaded() {
+            var cs = new CSInterface();
+            cs.evalScript('$.runScript.initialize()', function(result) {
+                document.getElementById('username').textContent = result;
+            });
+
+            // Example of setting version and sequence info
+            cs.evalScript('$.runScript.getVersion()', function(result) {
+                document.getElementById('version_string').textContent = result;
+            });
+
+            cs.evalScript('$.runScript.getActiveSequence()', function(result) {
+                document.getElementById('active_seq').textContent = result;
+            });
+
+            cs.evalScript('$.runScript.getProxiesStatus()', function(result) {
+                document.getElementById('proxies_on').textContent += result;
+            });
+        }
+
+        function evalScript(script) {
+            var cs = new CSInterface();
+            cs.evalScript(script);
+        }	
+		</script>
+		
+	</head>
+
+	<body onLoad="onLoaded()">
+		<a href="javascript:history.go(0)">Refresh panel</a>
+		
+		
+		<div id="section2" class="sectionID">
+			
+			<button class="controlBg textStyle" id="btn_PPRO100" onClick="evalScript('$.runScript.importFolderStructure()')">Import Folders</button>
+			<button class="controlBg textStyle" id="btn_PPRO101" onClick="evalScript('$.runScript.processImportedFolders()')">Process Folders</button>
+			<p> </p>
+			<p> </p>
+		</div>
+			  
+			     
+	</body>
+	<script>
+		document.body.onbeforeunload = function () {
+			var csInterface 	= new CSInterface();
+			var OSVersion 		= csInterface.getOSInformation();
+			var appVersion 		= csInterface.hostEnvironment.appVersion;
+			var versionAsFloat	= parseFloat(appVersion);
+			
+			csInterface.evalScript('$.runScript.closeLog()');
+	
+			if (versionAsFloat < 10.3) {
+				var path = "file:///Library/Application Support/Adobe/CEP/extensions/PProPanel/payloads/onbeforeunload.html";
+	
+				if (OSVersion.indexOf("Windows") >= 0) {
+					path = "file:///C:/Program%20Files%20(x86)/Common%20Files/Adobe/CEP/extensions/PProPanel/payloads/onbeforeunload.html"
+				}
+				csInterface.openURLInDefaultBrowser(path);
+			}
+		};
+	</script>
+</html>
