@@ -49,11 +49,11 @@
 	</head>
 
 	<body onLoad="onLoaded()">
-		<a href="javascript:history.go(0)">Refresh panel</a>
-		
+		<div class="div">
+			<a href="javascript:history.go(0)">Refresh panel</a>
+		</div>
 		
 		<div id="section2" class="sectionID">
-			
 			<button class="controlBg textStyle" id="btn_PPRO100" onClick="evalScript('$.runScript.importFolderStructure()')">Import Folders</button>
 			<button class="controlBg textStyle" id="btn_PPRO101" onClick="evalScript('$.runScript.processImportedFolders()')">Process Folders</button>
 			<p> </p>
