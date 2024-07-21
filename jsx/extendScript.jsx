@@ -55,86 +55,18 @@ $.runScript = {
 			var child = projectRoot.children[i];
 			if (child.type === ProjectItemType.BIN && child.name === "Main folder") {
 				mainFolder = child;
+
 				// Delete Main folder if it exists
-				child.remove();
+				this.deleteFolderContents(mainFolder);
 				break;
 			}
 		}
 
-		// If "Main folder" doesn't exist, create it
+		// Create a new "Main folder" if it doesn't exist
 		if (!mainFolder) {
 			mainFolder = projectRoot.createBin("Main folder");
 		}
-
 		return mainFolder;
-	},
-
-	// Function to clear all contents of a bin
-	// clearBinContents: function(bin) {
-	// 	for (var i = bin.children.numItems - 1; i >= 0; i--) {
-	// 		try {
-	// 			var child = bin.children[i];
-	// 			$.writeln("Removing item: " + child.name);
-	// 			child.remove(); // If it is a bin
-	// 		} catch (e) {
-	// 			try {
-	// 				child.remove(); // If it is a file
-	// 			} catch (e) {
-	// 				$.writeln("Error removing item: " + child.name + " " + e);
-	// 			}
-	// 		}
-	// 	}
-	// },
-
-	// Function to replace a title in a specific sequence
-	replaceTitleInSequence: function(sequenceName, newTitle) {
-		var sequence = this.findSequenceByName(sequenceName);
-		if (sequence) {
-			var titleItem = this.findTitleItemInSequence(sequence);
-			if (titleItem) {
-				// Assuming titleItem has a method to change the text
-				titleItem.setText(newTitle);
-			}
-		}
-	},
-
-	// Function to replace a screenshot in a specific sequence
-	replaceScreenshotInSequence: function(sequenceName, screenshotPath) {
-		var sequence = this.findSequenceByName(sequenceName);
-		if (sequence) {
-			var screenshotItem = this.findScreenshotItemInSequence(sequence);
-			if (screenshotItem) {
-				var screenshotFile = new File(screenshotPath);
-				if (screenshotFile.exists) {
-					screenshotItem.setFile(screenshotFile);
-					this.resizeItem(screenshotItem, 1920, 1080);
-					$.writeln('Screenshot replaced and resized in sequence: ' + sequenceName);
-				} else {
-					$.writeln('Screenshot file does not exist: ' + screenshotPath);
-				}
-			} else {
-				$.writeln('Screenshot item not found in sequence: ' + sequenceName);
-			}
-		} else {
-			$.writeln('Sequence not found: ' + sequenceName);
-		}
-	},
-
-	// Function to replace a video in a specific sequence
-	replaceVideoInSequence: function(sequenceName, videoPath) {
-		var sequence = this.findSequenceByName(sequenceName);
-		if (sequence) {
-			var videoItem = this.findVideoItemInSequence(sequence);
-			if (videoItem) {
-				videoItem.replaceWith(videoPath);
-			}
-		}
-	},
-
-	// Function to resize an item to specified width and height
-	resizeItem: function(item, width, height) {
-		// Assuming item has methods to set the scale
-		item.setScaleToFit(width, height);
 	},
 
 	// Function to import folder structure into the project
@@ -157,17 +89,22 @@ $.runScript = {
 
 			// Debug: Log the this.importedFolders to ensure it's assigned
 			$.writeln('this.importedFolders: ' + this.serialize(this.importedFolders));
+		} else {
+			$.writeln('No folder selected.');
 		}
 		$.writeln('Saving project');
 		this.saveProject();
 
 		$.writeln('Finished importFolderStructure');
+		$.writeln('...........................................................');
 	},
 
 	deleteFolderContents: function(folder) {
 		// First, delete all items in the root of the folder (files and subfolders)
 		for (var i = folder.children.numItems - 1; i >= 0; i--) {
 			var child = folder.children[i];
+
+			writeln('chile.type: ' + child.type + 'ProjectItemType.BIN: ' + ProjectItemType.BIN);
 			try {
 				// Check if the item is a bin (subfolder) and recursively delete its contents
 				if (child.type === ProjectItemType.BIN) {
@@ -187,226 +124,348 @@ $.runScript = {
 		$.writeln('Importing folder: ' + folderPath);
 		var folder = new Folder(folderPath);
 		var files = folder.getFiles();
-		var mp4File = null;
-		var pngFile = null;
 	
-		// Find or create "Main folder"
-		var mainFolder = this.findOrCreateMainFolder();
-		if (mainFolder) {
-			$.writeln('Main folder found. Deleting its contents...');
-			this.deleteFolderContents(mainFolder);
-		} else {
-			$.writeln('Main folder not found. Creating a new one...');
-			mainFolder = this.createFolder(parentItem, "Main folder");
+		// Ensure parentItem is a bin
+		if (!(parentItem instanceof ProjectItem) || parentItem.type !== ProjectItemType.BIN) {
+			$.writeln('Parent item is not a bin: ' + parentItem.name);
+			return;
 		}
 	
-		$.writeln('Number of files and folders in ' + folderPath + ': ' + files.length);
-	
+		// Iterate through files in the folder
 		for (var i = 0; i < files.length; i++) {
 			var file = files[i];
 	
 			if (file instanceof Folder) {
 				$.writeln('Found subfolder: ' + file.name);
 				var subFolderBin = parentItem.createBin(file.name);
-				this.importFolder(file.fsName, subFolderBin, importedFolders);
-			} else {
-				$.writeln('Found file: ' + file.name);
+				this.importFilesInSubFolder(file.fsName, subFolderBin, importedFolders);
+			}
+		}
+	},
 	
-				// Check if the file already exists in the "Main folder"
-				var existingItem = this.findFileInBin(parentItem, new RegExp(file.name + '$', 'i'));
-				if (existingItem) {
-					$.writeln('File already exists: ' + file.name);
-					continue;
+	importFilesInSubFolder: function(subFolderPath, subFolderBin, importedFolders) {
+		var subFolder = new Folder(subFolderPath);
+		var subFolderFiles = subFolder.getFiles();
+		var mp4File = null;
+		var pngFile = null;
+	
+		for (var j = 0; j < subFolderFiles.length; j++) {
+			var subFolderFile = subFolderFiles[j];
+	
+			if (subFolderFile instanceof File) {
+				$.writeln('Found file: ' + subFolderFile.name);
+	
+				// Import files into the bin
+				if (subFolderFile.name.match(/\.mp4$/i)) {
+					mp4File = subFolderFile;
+				} else if (subFolderFile.name.match(/\.png$/i)) {
+					pngFile = subFolderFile;
 				}
 	
-				if (file.name.match(/\.mp4$/i)) {
-					mp4File = file;
-				} else if (file.name.match(/\.png$/i)) {
-					pngFile = file;
-				}
-	
-				// Import the file into the current bin
-				app.project.importFiles([file.fsName], false, parentItem, false);
+				app.project.importFiles([subFolderFile.fsName], false, subFolderBin, false);
 			}
 		}
 	
+		// Add folder details to importedFolders
 		if (mp4File && pngFile) {
 			importedFolders.push({
-				folderName: folder.name,
+				folderName: subFolder.name,
 				mp4File: mp4File,
 				pngFile: pngFile
 			});
-	
 			$.writeln('Imported folder details: ' + this.serialize(importedFolders[importedFolders.length - 1]));
 		}
 	},
 	
-
-	
     processImportedFolders: function() {
 		$.writeln('Starting processImportedFolders');
 	
-		// Retrieve the "Main folder" bin
-		var mainFolder = this.findMainFolder();
+		// Retrieve the root item of the project
+		var projectRoot = app.project.rootItem;
+		var mainFolder = null;
+
+		// Search for "Main folder" in the project
+		for (var i = 0; i < projectRoot.children.numItems; i++) {
+			var child = projectRoot.children[i];
+			if (child.type === ProjectItemType.BIN && child.name === "Main folder") {
+				mainFolder = child;
+				$.writeln('Main folder bin found: ' + mainFolder.type);
+				break;
+			}
+		}
+
+		// Check if the "Main folder" was found
 		if (!mainFolder) {
 			$.writeln('Main folder bin not found.');
 			return;
 		}
+
+		// Initialize the importedFolders array
+		this.importedFolders = [];
 	
-		// Check if this.importedFolders is defined and has items
-		if (this.importedFolders && this.importedFolders.length > 0) {
+		// Retrieve the subfolders contained in "Main folder"
+		$.writeln('Number of children in Main folder: ' + mainFolder.children.numItems);
+
+		for (var i = 0; i < mainFolder.children.numItems; i++) {
+			var subfolder = mainFolder.children[i];
+			$.writeln('Checking child item: ' + subfolder.name + ', Type: ' + subfolder.type);
+
+			if (subfolder.type === ProjectItemType.BIN) {
+				$.writeln('Checking folder: ' + subfolder.name);
+
+				this.importedFolders.push({
+					folderName: subfolder.name,
+					folderBin: subfolder
+				});
+				$.writeln('Added folder: ' + subfolder.name);
+			}
+		}
+	
+		// Check if this.importedFolders has items
+		if (this.importedFolders.length > 0) {
 			$.writeln('Number of imported folders: ' + this.importedFolders.length);
 	
 			// Iterate over each imported folder
 			for (var i = 0; i < this.importedFolders.length; i++) {
 				var importedFolder = this.importedFolders[i];
 	
-				// Retrieve the subfolder within the "Main folder"
-				var folderBin = this.findBinInMainFolder(mainFolder, importedFolder.folderName);
-				if (!folderBin) {
-					$.writeln('Subfolder not found for: ' + importedFolder.folderName);
-					continue;
-				}
-	
 				// Retrieve MP4 and PNG files from the folder bin
-				var mp4File = this.findFileInBin(folderBin, /\.mp4$/i);
-				var pngFile = this.findFileInBin(folderBin, /\.png$/i);
+				$.writeln('Searching in bin: ' + importedFolder.folderName + ' for PNG files');
+				var pngFile = this.findFileInBin(importedFolder.folderBin, /\.png$/i);
 
-				// Check if the files are found
-				if (!mp4File || !pngFile) {
-					$.writeln('Required files not found in folder: ' + importedFolder.folderName);
-					continue;
+				if (pngFile) {
+					$.writeln('PNG file found: ' + pngFile.name);
+					this.processSequence(pngFile)
+				} else {
+					$.writeln('PNG file not found in folder: ' + importedFolder.folderName);
 				}
-	
-				// Debug: Log the details of the folder being processed
-				$.writeln('Processing folder: ' + this.serialize(importedFolder));
-	
-	
-				// Add files to the imported folder metadata
-				importedFolder.mp4File = mp4File;
-				importedFolder.pngFile = pngFile;
-	
-				// Debug: Log the details of the folder being processed
-				$.writeln('Processing folder: ' + this.serialize(importedFolder));
-	
-				// Process the folder
-				this.processFolder(importedFolder);
+
+				$.writeln('Searching in bin: ' + importedFolder.folderName + ' for MP4 files');
+				var mp4File = this.findFileInBin(importedFolder.folderBin, /\.mp4$/i);
+
+				// Log details about found files
+				if (mp4File) {
+					$.writeln('MP4 file found: ' + mp4File.name);
+					this.processVideo(mp4File)
+				} else {
+					$.writeln('MP4 file not found in folder: ' + importedFolder.folderName);
+				}
+
+				// Replace text graphics layer in the sequence named "Add Name Company" with the folder name
+				this.updateTextLayer(importedFolder.folderName);
 			}
 		} else {
-			$.writeln('No imported folders found or importedFolders array is empty.');
+			$.writeln('No subfolders found in "Main folder".');
 		}
 	
 		$.writeln('Finished processImportedFolders');
+		$.writeln('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _');
+	},
+
+	updateTextLayer: function(folderName) {
+		$.writeln('Updating text layer with folder name: ' + folderName);
+	
+		// Find the sequence named "Add Name Company"
+		var sequenceName = "Add Name Company"; // Adjusted to the correct sequence name
+		var sequence = this.findSequenceByName(sequenceName);
+	
+		if (!sequence) {
+			$.writeln('Sequence "' + sequenceName + '" not found.');
+			return;
+		}
+	
+		// Iterate through all items in the sequence to find the graphic layer
+		var textLayerFound = false;
+		for (var j = 0; j < sequence.videoTracks.numItems; j++) {
+			var track = sequence.videoTracks[j];
+			for (var k = 0; k < track.clips.numItems; k++) {
+				var clip = track.clips[k];
+				
+				$.writeln('clip.projectItem: ' + clip.projectItem + 'projectItem.type: ' + clip.projectItem.type + 'ProjectItemType.GRAPHIC: ' + ProjectItemType.GRAPHIC);
+
+				// Check if the clip is a graphic
+				if (clip.projectItem && clip.projectItem.type === ProjectItemType.GRAPHIC) {
+					var graphicItem = clip.projectItem;
+					
+					$.writeln('Found graphic layer: ' + graphicItem.name);
+	
+					// Access the graphic's text properties
+					var textLayers = graphicItem.getTextLayers(); // This is hypothetical; adjust as necessary
+					for (var l = 0; l < textLayers.length; l++) {
+						var textLayer = textLayers[l];
+						$.writeln('Found text layer: ' + textLayer.name);
+	
+						// Replace the text layer's text with the folder name
+						textLayer.text = folderName; // Replace this with the actual method to update text
+						textLayerFound = true;
+						$.writeln('Text layer updated with: ' + folderName);
+						break;
+					}
+					if (textLayerFound) break;
+				}
+			}
+			if (textLayerFound) break;
+		}
+	
+		if (!textLayerFound) {
+			$.writeln('No text layer found in sequence "' + sequenceName + '".');
+		}
 	},
 	
-	// Utility function to find the "Main folder" bin
-	findMainFolder: function() {
-		for (var i = 0; i < app.project.rootFolder.children.numItems; i++) {
-			var item = app.project.rootFolder.children[i];
-			if (item.type === ProjectItemType.FOLDER && item.name === "Main folder") {
-				return item;
-			}
-		}
-		return null;
-	},
+	processSequence: function(pngFile) {
+		var sequenceName = "Add Screenshot Indeed";
+		var sequence = this.findSequenceByName(sequenceName);
 	
-	// Utility function to find a subfolder by name within the "Main folder"
-	findBinInMainFolder: function(mainFolder, folderName) {
-		for (var i = 0; i < mainFolder.children.numItems; i++) {
-			var item = mainFolder.children[i];
-			if (item.type === ProjectItemType.FOLDER && item.name === folderName) {
-				return item;
-			}
+		if (!sequence) {
+			$.writeln('Sequence named "' + sequenceName + '" not found');
+			return;
 		}
-		return null;
+	
+		$.writeln('Sequence found: ' + sequence.name);
+		this.replaceFileInSequence(sequence, pngFile);
 	},
+
+	processVideo: function(mp4File) {
+		var sequenceName = "Add Facebook screenrecords";
+		var sequence = this.findSequenceByName(sequenceName);
+	
+		if (!sequence) {
+			$.writeln('Sequence named "' + sequenceName + '" not found');
+			return;
+		}
+	
+		$.writeln('Sequence found: ' + sequence.name);
+		this.replaceVideoInSequence(sequence, mp4File);
+	},
+
 	
 	// Utility function to find a file matching a regex in a bin
 	findFileInBin: function(bin, regex) {
+		$.writeln('Searching in bin: ' + bin.name + ' for files matching: ' + regex);
+		$.writeln('Logging ProjectItemType.FILE: ' + ProjectItemType.FILE);
+
 		for (var i = 0; i < bin.children.numItems; i++) {
 			var item = bin.children[i];
-			if (item.type === ProjectItemType.FILE && item.name.match(regex)) {
-				return item;
+			$.writeln('Checking item: ' + item.name + ', Type: ' + item.type );
+
+
+			if (regex.test(item.name)) {
+				$.writeln('Match found: ' + item.name);
+            	return item;
 			}
 		}
+		$.writeln('No matching file found in bin: ' + bin.name);
 		return null;
-	},
+	},	
 	
-
-	findTextLayerInSequence: function(sequence) {
-        for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-            var track = sequence.videoTracks[i];
-            for (var j = 0; j < track.clips.numItems; j++) {
-                var clip = track.clips[j];
-				$.writeln('Checking clip: ' + clip.projectItem.name + ', Type: clip.projectItem.type');
-                // Check if the clip is a text layer by name or type
-                if (clip.projectItem && clip.projectItem.type === ProjectItemType.GRAPHIC) {
-                    return clip;
-                }
-            }
-        }
-        return null;
-    },
-
-	processFolder: function(folder) {
-		$.writeln('Starting processFolder');
-		var folderName = folder.folderName;
-		var mp4File = folder.mp4File; // Already imported MP4 file
-    	var pngFile = folder.pngFile; // Already imported PNG file
+	// Function to replace a screenshot in a specific sequence
+	replaceFileInSequence: function(sequence, newFile) {
+		$.writeln('Clearing sequence before placing new file');
 		
-		try {
-			var sequenceNames = ["Add Name Company", "Add Screenshot indeed", "Add Facebook Recording"];
-			for (var i = 0; i < sequenceNames.length; i++) {
-				var sequenceName = sequenceNames[i];
-				var sequence = this.findSequenceByName(sequenceName);
-	
-				if (sequence) {
-					switch (sequenceName) {
-						case "Add Name Company":
-							var textLayer = this.findTextLayerInSequence(sequence);
-							if (textLayer) {
-								textLayer.projectItem.setName(folderName);
-								$.writeln('Text layer updated in sequence: ' + sequenceName);
-							} else {
-								$.writeln('Text layer not found in sequence: ' + sequenceName);
-							}
-							break;
-						case "Add Screenshot indeed":
-							var screenshotItem = this.findScreenshotItemInSequence(sequence);
-							if (screenshotItem && pngFile) {
-								// Replace existing PNG item
-								screenshotItem.remove();
-								sequence.videoTracks[0].insertClip(pngFile, screenshotItem.start);
-								this.resizeItem(pngFile, 1920, 1080);
-								$.writeln('Screenshot replaced and resized in sequence: ' + sequenceName);
-							} else {
-								$.writeln('Screenshot item not found or PNG file not provided for sequence: ' + sequenceName);
-							}
-							break;
-						case "Add Facebook Recording":
-							var videoItem = this.findVideoItemInSequence(sequence);
-							if (videoItem && mp4File) {
-								// Replace existing MP4 item
-								videoItem.remove();
-								sequence.videoTracks[0].insertClip(mp4File, videoItem.start);
-								$.writeln('Video replaced in sequence: ' + sequenceName);
-							} else {
-								$.writeln('Video item not found or MP4 file not provided for sequence: ' + sequenceName);
-							}
-							break;
-						default:
-							break;
-					}
-				} else {
-					$.writeln('Sequence not found: ' + sequenceName);
+		var videoTracks = sequence.videoTracks;
+		
+		// Clear all clips from all video tracks in the sequence
+		for (var i = 0; i < videoTracks.numTracks; i++) {
+			var track = videoTracks[i];
+			$.writeln('Processing track: ' + track.name);
+			
+			// Use a while loop to remove clips since the collection size changes on removal
+			while (track.clips.numItems > 0) {
+				var clip = track.clips[0]; // Always remove the first clip
+				$.writeln('Removing clip: ' + clip.projectItem.name);
+				try {
+					track.removeClip(clip); // Ensure this method exists
+				} catch (e) {
+					$.writeln('Error removing clip: ' + e.message);
 				}
 			}
-		} catch (error) {
-			$.writeln('Error processing folder: ' + error);
+		}
+		
+		$.writeln('Adding new file to the sequence');
+		
+		if (videoTracks.numTracks > 0) {
+			var firstTrack = videoTracks[0];
+			$.writeln('First track found: ' + firstTrack.name);
+			
+			// Verify if newFile is a valid ProjectItem
+			if (!newFile) {
+				$.writeln('Invalid file provided.');
+				return;
+			}
+			
+			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+			
+			try {
+				// Use the Timeline API to add the clip
+				var insertPoint = startTime; // Position to insert the new clip
+				var duration = newFile.duration; // Duration of the new clip
+				
+				// Assuming a method to insert clip exists with correct parameters
+				sequence.videoTracks[0].insertClip(newFile, insertPoint, duration);
+				$.writeln('New file added: ' + newFile.name);
+			} catch (e) {
+				$.writeln('Error adding file to sequence: ' + e.message);
+			}
+		} else {
+			$.writeln('No video tracks available in the sequence to add new file');
 		}
 	},
-		
 	
+
+	// Function to replace a video in a specific sequence
+	replaceVideoInSequence: function(sequence, newVideo) {
+		$.writeln('Clearing sequence before placing new video');
+		
+		var videoTracks = sequence.videoTracks;
+		
+		// Clear all clips from all video tracks in the sequence
+		for (var i = 0; i < videoTracks.numTracks; i++) {
+			var track = videoTracks[i];
+			$.writeln('Processing track: ' + track.name);
+			
+			// Use a while loop to remove clips since the collection size changes on removal
+			while (track.clips.numItems > 0) {
+				var clip = track.clips[0]; // Always remove the first clip
+				$.writeln('Removing clip: ' + clip.projectItem.name);
+				try {
+					track.removeClip(clip); // Ensure this method exists
+				} catch (e) {
+					$.writeln('Error removing clip: ' + e.message);
+				}
+			}
+		}
+		
+		$.writeln('Adding new video to the sequence');
+		
+		if (videoTracks.numTracks > 0) {
+			var firstTrack = videoTracks[0];
+			$.writeln('First track found: ' + firstTrack.name);
+			
+			// Verify if newVideo is a valid ProjectItem
+			if (!newVideo) {
+				$.writeln('Invalid video provided.');
+				return;
+			}
+			
+			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+			
+			try {
+				// Use the Timeline API to add the clip
+				var insertPoint = startTime; // Position to insert the new clip
+				var duration = newVideo.duration; // Duration of the new clip
+				
+				// Assuming a method to insert clip exists with correct parameters
+				sequence.videoTracks[0].insertClip(newVideo, insertPoint, duration);
+				$.writeln('New video added: ' + newVideo.name);
+			} catch (e) {
+				$.writeln('Error adding video to sequence: ' + e.message);
+			}
+		} else {
+			$.writeln('No video tracks available in the sequence to add new video');
+		}
+	},	
+
+
     findSequenceByName: function(name) {
         for (var i = 0; i < app.project.sequences.numSequences; i++) {
             if (app.project.sequences[i].name === name) {
@@ -416,47 +475,130 @@ $.runScript = {
         return null;
     },
 
-    findTitleItemInSequence: function(sequence) {
-        for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-            var track = sequence.videoTracks[i];
-            for (var j = 0; j < track.clips.numItems; j++) {
-                var clip = track.clips[j];
-                if (clip.name.match(/Title/i)) {
-                    return clip;
-                }
-            }
-        }
-        return null;
-    },
+	// findTextLayerInSequence: function(sequence) {
+    //     for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
+    //         var track = sequence.videoTracks[i];
+    //         for (var j = 0; j < track.clips.numItems; j++) {
+    //             var clip = track.clips[j];
+	// 			$.writeln('Checking clip: ' + clip.projectItem.name + ', Type: clip.projectItem.type');
+    //             // Check if the clip is a text layer by name or type
+    //             if (clip.projectItem && clip.projectItem.type === ProjectItemType.GRAPHIC) {
+    //                 return clip;
+    //             }
+    //         }
+    //     }
+    //     return null;
+    // },
 
-    findScreenshotItemInSequence: function(sequence) {
-        for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-            var track = sequence.videoTracks[i];
-            for (var j = 0; j < track.clips.numItems; j++) {
-                var clip = track.clips[j];
-                if (clip.projectItem && clip.projectItem.getMediaPath().match(/\.png$/i)) {
-                    return clip;
-                }
-            }
-        }
-        return null;
-    },
+	// Function to replace a title in a specific sequence
+	// replaceTitleInSequence: function(sequenceName, newTitle) {
+	// 	var sequence = this.findSequenceByName(sequenceName);
+	// 	if (sequence) {
+	// 		var titleItem = this.findTitleItemInSequence(sequence);
+	// 		if (titleItem) {
+	// 			// Assuming titleItem has a method to change the text
+	// 			titleItem.setText(newTitle);
+	// 		}
+	// 	}
+	// },
 
-    findVideoItemInSequence: function(sequence) {
-        for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-            var track = sequence.videoTracks[i];
-            for (var j = 0; j < track.clips.numItems; j++) {
-                var clip = track.clips[j];
-                if (clip.projectItem && clip.projectItem.getMediaPath().match(/\.mp4$/i)) {
-                    return clip;
-                }
-            }
-        }
-        return null;
-    },
+//     findTitleItemInSequence: function(sequence) {
+//         for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
+//             var track = sequence.videoTracks[i];
+//             for (var j = 0; j < track.clips.numItems; j++) {
+//                 var clip = track.clips[j];
+//                 if (clip.name.match(/Title/i)) {
+//                     return clip;
+//                 }
+//             }
+//         }
+//         return null;
+//     },
 
-    resizeItem: function(item, width, height) {
-        // Assuming item has methods to set the scale
-        item.setScaleToFit(width, height);
-    },
+//     findScreenshotItemInSequence: function(sequence) {
+//         for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
+//             var track = sequence.videoTracks[i];
+//             for (var j = 0; j < track.clips.numItems; j++) {
+//                 var clip = track.clips[j];
+//                 if (clip.projectItem && clip.projectItem.getMediaPath().match(/\.png$/i)) {
+//                     return clip;
+//                 }
+//             }
+//         }
+//         return null;
+//     },
+
+//     findVideoItemInSequence: function(sequence) {
+//         for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
+//             var track = sequence.videoTracks[i];
+//             for (var j = 0; j < track.clips.numItems; j++) {
+//                 var clip = track.clips[j];
+//                 if (clip.projectItem && clip.projectItem.getMediaPath().match(/\.mp4$/i)) {
+//                     return clip;
+//                 }
+//             }
+//         }
+//         return null;
+//     },
+
+//     resizeItem: function(item, width, height) {
+//         // Assuming item has methods to set the scale
+//         item.setScaleToFit(width, height);
+//     },
+
+	// Utility function to find the "Main folder" bin
+	// findMainFolder: function() {
+	// 	// Check if app is defined
+	// 	if (typeof app === 'undefined') {
+	// 		$.writeln("Error: app is undefined");
+	// 		return null;
+	// 	}
+	
+	// 	// Check if app.project is defined
+	// 	if (typeof app.project === 'undefined') {
+	// 		$.writeln("Error: app.project is undefined");
+	// 		return null;
+	// 	}
+	
+	// 	// Check if app.project.rootItem is defined
+	// 	if (typeof app.project.rootItem === 'undefined') {
+	// 		$.writeln("Error: app.project.rootItem is undefined");
+	// 		return null;
+	// 	}
+	
+	// 	var rootItem = app.project.rootItem;
+	
+	// 	// Check if rootItem has children
+	// 	if (typeof rootItem.children === 'undefined') {
+	// 		$.writeln("Error: rootItem.children is undefined");
+	// 		return null;
+	// 	}
+	
+	// 	// Log the number of children
+	// 	$.writeln("Number of children: " + rootItem.children.numItems);
+	
+	// 	// Iterate through the children to find "Main folder"
+	// 	for (var i = 0; i < rootItem.children.numItems; i++) {
+	// 		var item = rootItem.children[i];
+	// 		// Log each item type and name
+	// 		$.writeln("Item " + i + ": type=" + item.type + ", name=" + item.name);
+	// 		if (item.type === ProjectItemType.BIN && item.name === "Main folder") {
+	// 			return item;
+	// 		}
+	// 	}
+	
+	// 	// Return null if "Main folder" is not found
+	// 	return null;
+	// },	
+	
+	// Utility function to find a subfolder by name within the "Main folder"
+	// findBinInMainFolder: function(mainFolder, folderName) {
+	// 	for (var i = 0; i < mainFolder.children.numItems; i++) {
+	// 		var item = mainFolder.children[i];
+	// 		if (item.type === ProjectItemType.FOLDER && item.name === folderName) {
+	// 			return item;
+	// 		}
+	// 	}
+	// 	return null;
+	// },
 }

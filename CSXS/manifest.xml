@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="6.0" ExtensionBundleId="YosiPanel" ExtensionBundleVersion="1.0.0" ExtensionBundleName="YosiPanel" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest Version="6.0" ExtensionBundleId="com.yourcompany.YosiPanel" ExtensionBundleVersion="1.0.0" ExtensionBundleName="YosiPanel" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<ExtensionList>
-		<Extension Id="YosiPanel" Version="1.0" />
+		<Extension Id="com.yourcompany.YosiPanel" Version="1.0" />
 	</ExtensionList>
 	<ExecutionEnvironment>
 		<HostList>
@@ -16,7 +16,7 @@
 	</ExecutionEnvironment>
 
 	<DispatchInfoList>
-		<Extension Id="YosiPanel">
+		<Extension Id="com.yourcompany.YosiPanel">
 			<DispatchInfo >
 				<Resources>
 					<MainPath>./index.html</MainPath>

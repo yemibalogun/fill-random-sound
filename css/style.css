@@ -7,9 +7,17 @@ p {
 }
 
 a {
-        color: #8080ff;
+        color: #c7e3ff;
 		text-decoration: none;
-		margin: 20px;
+}
+
+a:hover {
+        color: #ffffff;
+		text-decoration: none;
+}
+
+.div {
+	margin-bottom: 2rem;
 }
 
 button
@@ -29,7 +37,8 @@ button:hover
 	border-radius: 10px;
 	height:30px;
 	margin: 5px;
-	background-color: rgb(237, 247, 255);
+	color: white;
+	background-color: rgb(109, 109, 109);
 }
 
 input[type=text]
