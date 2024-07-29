@@ -363,108 +363,91 @@ $.runScript = {
 		$.writeln('Clearing sequence before placing new file');
 		
 		var videoTracks = sequence.videoTracks;
-		
-		// Clear all clips from all video tracks in the sequence
-		for (var i = 0; i < videoTracks.numTracks; i++) {
-			var track = videoTracks[i];
-			$.writeln('Processing track: ' + track.name);
-			
-			// Use a while loop to remove clips since the collection size changes on removal
-			while (track.clips.numItems > 0) {
-				var clip = track.clips[0]; // Always remove the first clip
-				$.writeln('Removing clip: ' + clip.projectItem.name);
-				try {
-					track.removeClip(clip); // Ensure this method exists
-				} catch (e) {
-					$.writeln('Error removing clip: ' + e.message);
-				}
-			}
+
+		// Ensure the sequence has at east two video tracks
+		if (videoTracks.numTracks < 2) {
+			$.writeln('Sequence does not have a second video track');
+			return;
 		}
-		
-		$.writeln('Adding new file to the sequence');
-		
-		if (videoTracks.numTracks > 0) {
-			var firstTrack = videoTracks[0];
-			$.writeln('First track found: ' + firstTrack.name);
-			
-			// Verify if newFile is a valid ProjectItem
-			if (!newFile) {
-				$.writeln('Invalid file provided.');
-				return;
-			}
-			
+
+		// Process only the second video track (index 1)
+		var secondTrack = videoTracks[1];
+		$.writeln('Processing second track: ' + secondTrack.name);
+
+		// Check if there is exactly one clip in the second track 
+		if (secondTrack.clips.numItems == 0) {
+			$.writeln('Second track is empty. Adding new file.');
 			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-			
+
 			try {
-				// Use the Timeline API to add the clip
-				var insertPoint = startTime; // Position to insert the new clip
-				var duration = newFile.duration; // Duration of the new clip
-				
-				// Assuming a method to insert clip exists with correct parameters
-				sequence.videoTracks[0].insertClip(newFile, insertPoint, duration);
-				$.writeln('New file added: ' + newFile.name);
+				secondTrack.insertClip(newFie, startTime);
+				$.writen('Successfully inserted new clip: ' + newFile.name);
 			} catch (e) {
-				$.writeln('Error adding file to sequence: ' + e.message);
+				$.writeln('Error inserting new file: ' + e.message);
 			}
-		} else {
-			$.writeln('No video tracks available in the sequence to add new file');
+
+		}
+		// If there are one or more clips, use overwriteClip to replace them 
+		else {
+			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Replacing with new file.');
+
+			// Overwrite each clip in the second track
+			try {
+				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				secondTrack.overwriteClip(newFile, startTime);
+
+				// Find the newly inserted clip and set its duration
+				var newClip = secondTrack.clips[0]; // Assuming the new clip is now the first clip
+				var duration = 914457600000000;
+				newClip.end = startTime + duration; // Set the end time based on the desired duration
+
+				$.writeln('Successfully overwritten clip with new file: ' + newFile.name)
+			} catch (e) {
+				$.writeln('Error replacing clip: ' + e.message);
+			}
 		}
 	},
-	
+
 
 	// Function to replace a video in a specific sequence
 	replaceVideoInSequence: function(sequence, newVideo) {
-		$.writeln('Clearing sequence before placing new video');
+		$.writeln('Starting replaceVideoInSequence function');
 		
 		var videoTracks = sequence.videoTracks;
-		
-		// Clear all clips from all video tracks in the sequence
-		for (var i = 0; i < videoTracks.numTracks; i++) {
-			var track = videoTracks[i];
-			$.writeln('Processing track: ' + track.name);
-			
-			// Use a while loop to remove clips since the collection size changes on removal
-			while (track.clips.numItems > 0) {
-				var clip = track.clips[0]; // Always remove the first clip
-				$.writeln('Removing clip: ' + clip.projectItem.name);
-				try {
-					track.removeClip(clip); // Ensure this method exists
-				} catch (e) {
-					$.writeln('Error removing clip: ' + e.message);
-				}
-			}
+
+		// Ensure the sequence has at least one video track
+		if (videoTracks.numItems < 1) {
+			$.writeln('Sequence does not have any video tracks');
+			sequence.videoTracks.add();
 		}
-		
-		$.writeln('Adding new video to the sequence');
-		
-		if (videoTracks.numTracks > 0) {
-			var firstTrack = videoTracks[0];
-			$.writeln('First track found: ' + firstTrack.name);
-			
-			// Verify if newVideo is a valid ProjectItem
-			if (!newVideo) {
-				$.writeln('Invalid video provided.');
-				return;
-			}
-			
+
+		// Process only the first video track (index 0)
+		var firstTrack = videoTracks[0];
+		$.writeln('Processing first track: ' + firstTrack.name);
+
+		// Check if there are no clips in the first track
+		if (firstTrack.clips.numItems == 0) {
+			$.writeln('First track has no clips. Adding new video.');
 			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-			
+
 			try {
-				// Use the Timeline API to add the clip
-				var insertPoint = startTime; // Position to insert the new clip
-				var duration = newVideo.duration; // Duration of the new clip
-				
-				// Assuming a method to insert clip exists with correct parameters
-				sequence.videoTracks[0].insertClip(newVideo, insertPoint, duration);
-				$.writeln('New video added: ' + newVideo.name);
+				firstTrack.insertClip(newVideo, startTime);
+				$.writeln('Successfully inserted new video: ' + newVideo.name);
 			} catch (e) {
-				$.writeln('Error adding video to sequence: ' + e.message);
+				$.writeln('Error inserting new video: ' + e.message);
 			}
 		} else {
-			$.writeln('No video tracks available in the sequence to add new video');
+			$.writeln('Found ' + firstTrack.clips.numItems + ' clips in the first track. Overwriting with new video.')
+			
+			try {
+				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				firstTrack.overwriteClip(newVideo, startTime);
+				$.writeln('Successfully overwritten clip with new video: ' + newVideo.name);
+			} catch (e) {
+				$.writeln('Error replacing clip: ' + e.message);
+			}
 		}
-	},	
-
+	},
 
     findSequenceByName: function(name) {
         for (var i = 0; i < app.project.sequences.numSequences; i++) {
