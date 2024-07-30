@@ -264,54 +264,81 @@ $.runScript = {
 
 	updateTextLayer: function(folderName) {
 		$.writeln('Updating text layer with folder name: ' + folderName);
-	
+		
+		// Check if folderName is undefined or empty
+		if (!folderName) {
+			$.writeln('Error: folderName is undefined or empty.');
+			return;
+		}
+		
 		// Find the sequence named "Add Name Company"
-		var sequenceName = "Add Name Company"; // Adjusted to the correct sequence name
+		var sequenceName = "Add Name Company";
 		var sequence = this.findSequenceByName(sequenceName);
-	
+		
 		if (!sequence) {
 			$.writeln('Sequence "' + sequenceName + '" not found.');
 			return;
 		}
-	
-		// Iterate through all items in the sequence to find the graphic layer
-		var textLayerFound = false;
-		for (var j = 0; j < sequence.videoTracks.numItems; j++) {
-			var track = sequence.videoTracks[j];
-			for (var k = 0; k < track.clips.numItems; k++) {
-				var clip = track.clips[k];
-				
-				$.writeln('clip.projectItem: ' + clip.projectItem + 'projectItem.type: ' + clip.projectItem.type + 'ProjectItemType.GRAPHIC: ' + ProjectItemType.GRAPHIC);
-
-				// Check if the clip is a graphic
-				if (clip.projectItem && clip.projectItem.type === ProjectItemType.GRAPHIC) {
-					var graphicItem = clip.projectItem;
-					
-					$.writeln('Found graphic layer: ' + graphicItem.name);
-	
-					// Access the graphic's text properties
-					var textLayers = graphicItem.getTextLayers(); // This is hypothetical; adjust as necessary
-					for (var l = 0; l < textLayers.length; l++) {
-						var textLayer = textLayers[l];
-						$.writeln('Found text layer: ' + textLayer.name);
-	
-						// Replace the text layer's text with the folder name
-						textLayer.text = folderName; // Replace this with the actual method to update text
-						textLayerFound = true;
-						$.writeln('Text layer updated with: ' + folderName);
-						break;
-					}
-					if (textLayerFound) break;
-				}
+		
+		$.writeln('Sequence "' + sequenceName + '" found.');
+		
+		var track = sequence.videoTracks[1];
+		$.writeln('Processing second track: ' + track.name);
+		
+		var localPath = "C:\\Users\\OMEN 15 Pro\\Desktop\\mytemplates\\Yemi moGRT\\Yemi moGRT Demo.mogrt";
+		var time = '0';
+		var vidTrack = 1;
+		var audTrack = 0;
+		
+		// Check if there are clips in the second track
+		if (track.clips.numItems > 0) {
+			$.writeln('Found ' + track.clips.numItems + ' clips in the second track.');
+			
+			// Remove all clips from the second track
+			for (var i = track.clips.numItems - 1; i >= 0; i--) {
+				track.clips[i].remove(true, true);
 			}
-			if (textLayerFound) break;
+			$.writeln('All clips removed from ' + track.name);
+		} else {
+			$.writeln('No clips found in the second track.');
 		}
+		
+		// Import new MoGRT
+		try {
+			var newMOGRT = sequence.importMGT(localPath, time, vidTrack, audTrack);
+			$.writeln('New MoGRT imported: ' + newMOGRT);
+
+			if (newMOGRT) {
+				$.writeln('newMOGRT found: ' + newMOGRT.name);
+
+				// Access the MoGRT Components
+				var components = newMOGRT.getMGTComponent();
+				$.writeln('Components found: ' + components);
+
+				if (components) {
+					// Check for the 'getParamForDisplayName' method and set the value
+					for (var i = 0; i < components.properties.numItems; i++) {
+						var property = components.properties[i];
+						$.writeln('Property ' + i + ': ' + property.displayName);
 	
-		if (!textLayerFound) {
-			$.writeln('No text layer found in sequence "' + sequenceName + '".');
+						if (property.displayName === 'Yemi moGRT Demo') {
+							property.setValue(folderName);
+							$.writeln('Text layer updated with: ' + folderName);
+						}
+					}
+				} else {
+					$.writeln('No components found in the MoGRT.');
+				}
+			} else {
+				$.writeln('Failed to import MoGRT.');
+			}
+		} catch (e) {
+			$.writeln('Error importing MoGRT: ' + e.message);
 		}
 	},
-	
+
+
+	 
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
 		var sequence = this.findSequenceByName(sequenceName);
@@ -375,35 +402,41 @@ $.runScript = {
 		$.writeln('Processing second track: ' + secondTrack.name);
 
 		// Check if there is exactly one clip in the second track 
-		if (secondTrack.clips.numItems == 0) {
+		if (secondTrack.clips.numItems > 0) {
+			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Removing the track.');
+
+			// Remove all clips from the second track
+			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
+				secondTrack.clips[i].remove(true, true);
+			}
+			$.writeln('All clips removed from ' + secondTrack.name);
+
+			// Insert the new clip into the second track
+			try {
+				// Add the new file to the new track
+				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				secondTrack.insertClip(newFile, startTime);
+				$.writeln('Successfully inserted new clip: ' + newFile.name);
+			} catch (e) {
+				$.writeln('Error inserting new file: ' + e.message);
+			}
+		} else {
+			// If there are no clips, insert the new clip into the second track
 			$.writeln('Second track is empty. Adding new file.');
 			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 
 			try {
-				secondTrack.insertClip(newFie, startTime);
-				$.writen('Successfully inserted new clip: ' + newFile.name);
-			} catch (e) {
-				$.writeln('Error inserting new file: ' + e.message);
-			}
-
-		}
-		// If there are one or more clips, use overwriteClip to replace them 
-		else {
-			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Replacing with new file.');
-
-			// Overwrite each clip in the second track
-			try {
-				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-				secondTrack.overwriteClip(newFile, startTime);
+				
+				secondTrack.insertClip(newFile, startTime);
 
 				// Find the newly inserted clip and set its duration
 				var newClip = secondTrack.clips[0]; // Assuming the new clip is now the first clip
-				var duration = 914457600000000;
+				var duration = '228600';
 				newClip.end = startTime + duration; // Set the end time based on the desired duration
 
-				$.writeln('Successfully overwritten clip with new file: ' + newFile.name)
+				$.writeln('Successfully inserted new clip: ' + newFile.name)
 			} catch (e) {
-				$.writeln('Error replacing clip: ' + e.message);
+				$.writeln('Error inserting file: ' + e.message);
 			}
 		}
 	},
@@ -414,37 +447,45 @@ $.runScript = {
 		$.writeln('Starting replaceVideoInSequence function');
 		
 		var videoTracks = sequence.videoTracks;
+		var audioTracks = sequence.audioTracks;
 
-		// Ensure the sequence has at least one video track
-		if (videoTracks.numItems < 1) {
-			$.writeln('Sequence does not have any video tracks');
-			sequence.videoTracks.add();
-		}
-
+		
 		// Process only the first video track (index 0)
 		var firstTrack = videoTracks[0];
+		var firstAudio = audioTracks[0];
 		$.writeln('Processing first track: ' + firstTrack.name);
 
-		// Check if there are no clips in the first track
-		if (firstTrack.clips.numItems == 0) {
-			$.writeln('First track has no clips. Adding new video.');
-			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+		// Check if there are no videos in the first track
+		if (firstTrack.clips.numItems > 0) {
+			$.writeln('Found ' + firstTrack.clips.numItems + ' videos in the first track. Removing all videos.');
 
+			// Remove all videos from the first track
+			for (var i = firstTrack.clips.numItems - 1; i >= 0; i--) {
+				firstTrack.clips[i].remove(true, true);
+				firstAudio.clips[i].remove(true, true);
+			}
+			$.writeln('All videos removed from ' + firstTrack.name);
+
+			// Insert the new video into the first track
 			try {
+				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 				firstTrack.insertClip(newVideo, startTime);
-				$.writeln('Successfully inserted new video: ' + newVideo.name);
+				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name);
 			} catch (e) {
 				$.writeln('Error inserting new video: ' + e.message);
 			}
-		} else {
-			$.writeln('Found ' + firstTrack.clips.numItems + ' clips in the first track. Overwriting with new video.')
 			
+		} else {
+			// If there are no videos, insert the new video into the first track
+			$.writeln('First track is empty. Adding new video.');
+			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+
 			try {
-				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-				firstTrack.overwriteClip(newVideo, startTime);
-				$.writeln('Successfully overwritten clip with new video: ' + newVideo.name);
+				firstTrack.Track.insertClip(newVideo, startTime);
+
+				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name);
 			} catch (e) {
-				$.writeln('Error replacing clip: ' + e.message);
+				$.writeln('Error inserting new video: ' + e.message);
 			}
 		}
 	},
