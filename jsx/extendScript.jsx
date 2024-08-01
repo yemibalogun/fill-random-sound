@@ -246,13 +246,17 @@ $.runScript = {
 				// Log details about found files
 				if (mp4File) {
 					$.writeln('MP4 file found: ' + mp4File.name);
-					this.processVideo(mp4File)
+					this.processVideo(mp4File);
 				} else {
 					$.writeln('MP4 file not found in folder: ' + importedFolder.folderName);
 				}
 
 				// Replace text graphics layer in the sequence named "Add Name Company" with the folder name
 				this.updateTextLayer(importedFolder.folderName);
+
+				// Save sequence to "Ready for Export" bin
+				this.saveSequenceToReadyForExport(importedFolder.folderName);
+
 			}
 		} else {
 			$.writeln('No subfolders found in "Main folder".');
@@ -342,6 +346,7 @@ $.runScript = {
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
 		var sequence = this.findSequenceByName(sequenceName);
+		var newDurationInSeconds = 120;
 	
 		if (!sequence) {
 			$.writeln('Sequence named "' + sequenceName + '" not found');
@@ -349,7 +354,7 @@ $.runScript = {
 		}
 	
 		$.writeln('Sequence found: ' + sequence.name);
-		this.replaceFileInSequence(sequence, pngFile);
+		this.replaceFileInSequence(sequence, pngFile, newDurationInSeconds);
 	},
 
 	processVideo: function(mp4File) {
@@ -386,7 +391,7 @@ $.runScript = {
 	},	
 	
 	// Function to replace a screenshot in a specific sequence
-	replaceFileInSequence: function(sequence, newFile) {
+	replaceFileInSequence: function(sequence, pngFile, newDurationInSeconds) {
 		$.writeln('Clearing sequence before placing new file');
 		
 		var videoTracks = sequence.videoTracks;
@@ -401,7 +406,7 @@ $.runScript = {
 		var secondTrack = videoTracks[1];
 		$.writeln('Processing second track: ' + secondTrack.name);
 
-		// Check if there is exactly one clip in the second track 
+		// Check if there is more than one clip in the second track 
 		if (secondTrack.clips.numItems > 0) {
 			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Removing the track.');
 
@@ -413,12 +418,16 @@ $.runScript = {
 
 			// Insert the new clip into the second track
 			try {
-				// Add the new file to the new track
 				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-				secondTrack.insertClip(newFile, startTime);
-				$.writeln('Successfully inserted new clip: ' + newFile.name);
+				var newClip = secondTrack.insertClip(pngFile, startTime);
+				
+				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name);
+				
+				// Extend the duration of the inserted clip
+				this.extendTrackItemDuration(newClip, newDurationInSeconds);
+
 			} catch (e) {
-				$.writeln('Error inserting new file: ' + e.message);
+				$.writeln('Error inserting new image: ' + e.message);
 			}
 		} else {
 			// If there are no clips, insert the new clip into the second track
@@ -426,17 +435,16 @@ $.runScript = {
 			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 
 			try {
+				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				var newClip = secondTrack.insertClip(pngFile, startTime);
 				
-				secondTrack.insertClip(newFile, startTime);
+				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name);
+				
+				// Extend the duration of the inserted clip
+				this.extendTrackItemDuration(newClip, newDurationInSeconds);
 
-				// Find the newly inserted clip and set its duration
-				var newClip = secondTrack.clips[0]; // Assuming the new clip is now the first clip
-				var duration = '228600';
-				newClip.end = startTime + duration; // Set the end time based on the desired duration
-
-				$.writeln('Successfully inserted new clip: ' + newFile.name)
 			} catch (e) {
-				$.writeln('Error inserting file: ' + e.message);
+				$.writeln('Error inserting new image: ' + e.message);
 			}
 		}
 	},
@@ -459,30 +467,37 @@ $.runScript = {
 		if (firstTrack.clips.numItems > 0) {
 			$.writeln('Found ' + firstTrack.clips.numItems + ' videos in the first track. Removing all videos.');
 
-			// Remove all videos from the first track
+			// Remove all clips from the first video and audio tracks
 			for (var i = firstTrack.clips.numItems - 1; i >= 0; i--) {
 				firstTrack.clips[i].remove(true, true);
-				firstAudio.clips[i].remove(true, true);
 			}
-			$.writeln('All videos removed from ' + firstTrack.name);
+
+			for (var j = firstAudio.clips.numItems - 1; j >= 0; j--) {
+				firstAudio.clips[j].remove(true, true);
+			}
+
+			$.writeln('All clips removed from ' + firstTrack.name);
 
 			// Insert the new video into the first track
 			try {
 				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 				firstTrack.insertClip(newVideo, startTime);
+				firstAudio.insertClip(newVideo, startTime);
+	
 				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name);
 			} catch (e) {
 				$.writeln('Error inserting new video: ' + e.message);
 			}
 			
 		} else {
-			// If there are no videos, insert the new video into the first track
+			// If there are no clips, insert the new video into the first track
 			$.writeln('First track is empty. Adding new video.');
-			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 
 			try {
-				firstTrack.Track.insertClip(newVideo, startTime);
-
+				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				firstTrack.insertClip(newVideo, startTime);
+				firstAudio.insertClip(newVideo, startTime);
+	
 				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name);
 			} catch (e) {
 				$.writeln('Error inserting new video: ' + e.message);
@@ -499,130 +514,169 @@ $.runScript = {
         return null;
     },
 
-	// findTextLayerInSequence: function(sequence) {
-    //     for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-    //         var track = sequence.videoTracks[i];
-    //         for (var j = 0; j < track.clips.numItems; j++) {
-    //             var clip = track.clips[j];
-	// 			$.writeln('Checking clip: ' + clip.projectItem.name + ', Type: clip.projectItem.type');
-    //             // Check if the clip is a text layer by name or type
-    //             if (clip.projectItem && clip.projectItem.type === ProjectItemType.GRAPHIC) {
-    //                 return clip;
-    //             }
-    //         }
-    //     }
-    //     return null;
-    // },
+	saveSequenceToReadyForExport: function(folderName) {
+		$.writeln('Starting saveSequenceToReadyForExport with folder name: ' + folderName);
 
-	// Function to replace a title in a specific sequence
-	// replaceTitleInSequence: function(sequenceName, newTitle) {
-	// 	var sequence = this.findSequenceByName(sequenceName);
-	// 	if (sequence) {
-	// 		var titleItem = this.findTitleItemInSequence(sequence);
-	// 		if (titleItem) {
-	// 			// Assuming titleItem has a method to change the text
-	// 			titleItem.setText(newTitle);
-	// 		}
-	// 	}
-	// },
+		// Save the project 
+		app.project.save();
+		$.writeln('Project saved.');
 
-//     findTitleItemInSequence: function(sequence) {
-//         for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-//             var track = sequence.videoTracks[i];
-//             for (var j = 0; j < track.clips.numItems; j++) {
-//                 var clip = track.clips[j];
-//                 if (clip.name.match(/Title/i)) {
-//                     return clip;
-//                 }
-//             }
-//         }
-//         return null;
-//     },
+		// Retrieve the root item of the project
+		var projectRoot = app.project.rootItem;
 
-//     findScreenshotItemInSequence: function(sequence) {
-//         for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-//             var track = sequence.videoTracks[i];
-//             for (var j = 0; j < track.clips.numItems; j++) {
-//                 var clip = track.clips[j];
-//                 if (clip.projectItem && clip.projectItem.getMediaPath().match(/\.png$/i)) {
-//                     return clip;
-//                 }
-//             }
-//         }
-//         return null;
-//     },
+		// Check if the "Ready for Export" bin exists, if not, create it
+		var readyForExportBin = null;
+		for (var i = 0; i < projectRoot.children.numItems; i++) {
+			var child = projectRoot.children[i];
+			if (child.type === ProjectItemType.BIN && child.name === "Ready for Export") {
+				readyForExportBin = child;
+				break;
+			}
+		}
 
-//     findVideoItemInSequence: function(sequence) {
-//         for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-//             var track = sequence.videoTracks[i];
-//             for (var j = 0; j < track.clips.numItems; j++) {
-//                 var clip = track.clips[j];
-//                 if (clip.projectItem && clip.projectItem.getMediaPath().match(/\.mp4$/i)) {
-//                     return clip;
-//                 }
-//             }
-//         }
-//         return null;
-//     },
+		if (!readyForExportBin) {
+			readyForExportBin = projectRoot.createBin("Ready for Export");
+			$.writeln('Created "Ready for Export" bin.');
+		} else {
+			$.writeln('"Ready for Export" bin already exists.');
+		}
 
-//     resizeItem: function(item, width, height) {
-//         // Assuming item has methods to set the scale
-//         item.setScaleToFit(width, height);
-//     },
+		var sequenceName = "BrandPeak - Social Vacature - Variant 1";
+		var sequence = this.findSequenceByName(sequenceName);
 
-	// Utility function to find the "Main folder" bin
-	// findMainFolder: function() {
-	// 	// Check if app is defined
-	// 	if (typeof app === 'undefined') {
-	// 		$.writeln("Error: app is undefined");
-	// 		return null;
-	// 	}
+		if (!sequence) {
+			$.writeln('Sequence named "' + sequenceName + '" not found');
+			return;
+		}
 	
-	// 	// Check if app.project is defined
-	// 	if (typeof app.project === 'undefined') {
-	// 		$.writeln("Error: app.project is undefined");
-	// 		return null;
-	// 	}
-	
-	// 	// Check if app.project.rootItem is defined
-	// 	if (typeof app.project.rootItem === 'undefined') {
-	// 		$.writeln("Error: app.project.rootItem is undefined");
-	// 		return null;
-	// 	}
-	
-	// 	var rootItem = app.project.rootItem;
-	
-	// 	// Check if rootItem has children
-	// 	if (typeof rootItem.children === 'undefined') {
-	// 		$.writeln("Error: rootItem.children is undefined");
-	// 		return null;
-	// 	}
-	
-	// 	// Log the number of children
-	// 	$.writeln("Number of children: " + rootItem.children.numItems);
-	
-	// 	// Iterate through the children to find "Main folder"
-	// 	for (var i = 0; i < rootItem.children.numItems; i++) {
-	// 		var item = rootItem.children[i];
-	// 		// Log each item type and name
-	// 		$.writeln("Item " + i + ": type=" + item.type + ", name=" + item.name);
-	// 		if (item.type === ProjectItemType.BIN && item.name === "Main folder") {
-	// 			return item;
-	// 		}
-	// 	}
-	
-	// 	// Return null if "Main folder" is not found
-	// 	return null;
-	// },	
-	
-	// Utility function to find a subfolder by name within the "Main folder"
-	// findBinInMainFolder: function(mainFolder, folderName) {
-	// 	for (var i = 0; i < mainFolder.children.numItems; i++) {
-	// 		var item = mainFolder.children[i];
-	// 		if (item.type === ProjectItemType.FOLDER && item.name === folderName) {
-	// 			return item;
-	// 		}
-	// 	}
-	// 	return null;
-	// },
+		$.writeln('Sequence found: ' + sequence.name);
+
+		try {
+			// Create a new sequence with the folder name
+			var newSequenceName = folderName;
+			var newSequence = this.duplicateSequence(sequence, newSequenceName);
+
+			// Add the new sequence to the "Ready for Export" bin
+			readyForExportBin.children.append(newSequence);
+
+			$.writeln('New sequence created and added to "Ready for Export" bin with name: ' + newSequenceName);
+		} catch (e) {
+			$.writeln('Error creating new sequence: ' + e.message);
+			return;
+		}
+
+		// Export the sequence to Media Encoder with folderName as the video title
+		try {
+			app.enableQE();
+
+			var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_preset.epr";
+        	var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
+
+			// Find the "Ready for Export" bin
+			this.findBinIndex(app.project.rootItem, "Ready for Export");
+			var targetBin = globalBind;
+
+			if (!targetBin) {
+				$.writeln('Error: "Ready for Export" bin not found.');
+				return;
+			}
+
+			var numSeqs = targetBin.children.numItems;
+
+			for(var a = 0; a < numSeqs; a++) {
+				var exportName = targetBin.children[a].name;
+				for (var b = 0; b < app.project.sequences.numSequences; b++) {
+					if (app.project.sequences[b].name == exportName) {
+						app.project.activeSequence = app.project.sequences[b];
+
+						this.renderActiveSeq();
+					}
+				}
+			}
+
+			app.encoder.startBatch();
+			app.encoder.launchEncoder();
+			
+			$.writeln('Sequence exported to Media Encoder with title: ' + folderName);
+		} catch (e) {
+			$.writeln('Error exporting sequence: ' + e.message);
+		}
+
+		$.writeln('Finished saveSequenceToReadyForExport');
+
+	},
+
+	// Helper function to duplicate an existing sequence
+	duplicateSequence: function(sequence, newSequenceName) {
+		// Assuming you have a method to duplicate a sequence
+		// You will need to handle this based on available functions in your environment
+		var newSequence = app.project.createNewSequence(newSequenceName, sequence);
+		return newSequence;
+	},
+
+	// Helper function to find bin index
+	findBinIndex: function(rootItem, targetBinName) {
+		globalBind = null; // Initialize globalBind to null
+		for (var i = 0; i < rootItem.children.numItems; i++) {
+			if (rootItem.children[i].name === targetBinName) {
+				globalBind = rootItem.children[i];
+				break;
+			}
+		}
+		if (!globalBind) {
+			$.writeln('Error: Bin "' + targetBinName + '" not found.');
+		}
+	},
+
+	// Helper function to render the active sequence
+	renderActiveSeq: function() {
+		var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_preset.epr";
+		var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
+		app.encoder.encodeSequence(app.project.activeSequence, outputPath, outputPresetPath, app.encoder.ENCODE_WORK_AREA);
+	},
+
+	// Helper function to get clips from a sequence
+	getClipsFromSequence: function(sequence) {
+		var clipsArray = [];
+		var videoTracks = sequence.videoTracks;
+
+		for (var i = 0; i < videoTracks.numTracks; i++) {
+			var track = videoTracks[i];
+			for (var j = 0; j < track.clips.numItems; j++) {
+				clipsArray.push(track.clips[j].projectItem);
+			}
+		}
+
+		return clipsArray;
+	},
+
+	// Helper function to extend the duration of a TrackItem
+	extendTrackItemDuration: function(trackItem, newDurationInSeconds) {
+		$.writeln('Starting extendTrackItemDuration function');
+
+		try {
+			var currentInPoint = trackItem.inPoint;  // Get the current in point of the TrackItem
+			var currentOutPoint = trackItem.outPoint; // Get the current out point of the TrackItem
+			
+			var currentDuration = currentOutPoint - currentInPoint; // Calculate the current duration
+			var newDuration = newDurationInSeconds; // Use seconds directly
+			
+			if (newDuration > currentDuration) {
+				var newOutPoint = currentInPoint + newDuration; // Calculate the new out point
+				
+				trackItem.outPoint = newOutPoint; // Set the new out point
+				$.writeln('Extended duration of TrackItem to: ' + newDurationInSeconds + ' seconds');
+			} else {
+				$.writeln('New duration must be greater than the current duration.');
+			}
+		} catch (e) {
+			$.writeln('Error extending TrackItem duration: ' + e.message);
+		}
+	},
+
+	// Helper function to create a new sequence from an existing sequence
+	createNewSequenceFromSequence: function(newSequenceName, originalSequence) {
+		// Assuming this method is available in your scripting environment
+		return app.project.createNewSequenceFromSequence(newSequenceName, originalSequence);
+	},
 }
