@@ -346,7 +346,7 @@ $.runScript = {
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
 		var sequence = this.findSequenceByName(sequenceName);
-		var newDurationInSeconds = 120;
+		var newDurationInSeconds = 1200;
 	
 		if (!sequence) {
 			$.writeln('Sequence named "' + sequenceName + '" not found');
@@ -423,8 +423,8 @@ $.runScript = {
 				
 				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name);
 				
-				// Extend the duration of the inserted clip
-				this.extendTrackItemDuration(newClip, newDurationInSeconds);
+				
+
 
 			} catch (e) {
 				$.writeln('Error inserting new image: ' + e.message);
@@ -438,10 +438,11 @@ $.runScript = {
 				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 				var newClip = secondTrack.insertClip(pngFile, startTime);
 				
-				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name);
 				
-				// Extend the duration of the inserted clip
-				this.extendTrackItemDuration(newClip, newDurationInSeconds);
+				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name + newClip.type);
+				
+				
+				$.writeln("Duration extended successfully.");
 
 			} catch (e) {
 				$.writeln('Error inserting new image: ' + e.message);
@@ -516,139 +517,60 @@ $.runScript = {
 
 	saveSequenceToReadyForExport: function(folderName) {
 		$.writeln('Starting saveSequenceToReadyForExport with folder name: ' + folderName);
-
-		// Save the project 
+	
+		// Save the project
 		app.project.save();
 		$.writeln('Project saved.');
-
-		// Retrieve the root item of the project
-		var projectRoot = app.project.rootItem;
-
-		// Check if the "Ready for Export" bin exists, if not, create it
-		var readyForExportBin = null;
-		for (var i = 0; i < projectRoot.children.numItems; i++) {
-			var child = projectRoot.children[i];
-			if (child.type === ProjectItemType.BIN && child.name === "Ready for Export") {
-				readyForExportBin = child;
-				break;
-			}
-		}
-
-		if (!readyForExportBin) {
-			readyForExportBin = projectRoot.createBin("Ready for Export");
-			$.writeln('Created "Ready for Export" bin.');
-		} else {
-			$.writeln('"Ready for Export" bin already exists.');
-		}
-
+	
 		var sequenceName = "BrandPeak - Social Vacature - Variant 1";
 		var sequence = this.findSequenceByName(sequenceName);
-
+	
 		if (!sequence) {
 			$.writeln('Sequence named "' + sequenceName + '" not found');
 			return;
 		}
 	
-		$.writeln('Sequence found: ' + sequence.name);
-
+		$.writeln('Sequence found: ' + sequence.sequenceID);
+	
+		// Export the sequence directly from Premiere Pro
 		try {
-			// Create a new sequence with the folder name
-			var newSequenceName = folderName;
-			var newSequence = this.duplicateSequence(sequence, newSequenceName);
 
-			// Add the new sequence to the "Ready for Export" bin
-			readyForExportBin.children.append(newSequence);
+			// var sequence = sequence;
+			// var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
+			// var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_preset.epr";
+			// app.encoder.launchEncoder();
+			// $.writeln('Media Encoder launched.');
 
-			$.writeln('New sequence created and added to "Ready for Export" bin with name: ' + newSequenceName);
-		} catch (e) {
-			$.writeln('Error creating new sequence: ' + e.message);
-			return;
-		}
+			// app.encoder.encodeSequence(sequence, outputPath, outputPresetPath, 0, 1);
 
-		// Export the sequence to Media Encoder with folderName as the video title
-		try {
-			app.enableQE();
-
-			var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_preset.epr";
-        	var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
-
-			// Find the "Ready for Export" bin
-			this.findBinIndex(app.project.rootItem, "Ready for Export");
-			var targetBin = globalBind;
-
-			if (!targetBin) {
-				$.writeln('Error: "Ready for Export" bin not found.');
-				return;
-			}
-
-			var numSeqs = targetBin.children.numItems;
-
-			for(var a = 0; a < numSeqs; a++) {
-				var exportName = targetBin.children[a].name;
-				for (var b = 0; b < app.project.sequences.numSequences; b++) {
-					if (app.project.sequences[b].name == exportName) {
-						app.project.activeSequence = app.project.sequences[b];
-
-						this.renderActiveSeq();
-					}
-				}
-			}
-
-			app.encoder.startBatch();
-			app.encoder.launchEncoder();
+			// app.encoder.startBatch();
 			
-			$.writeln('Sequence exported to Media Encoder with title: ' + folderName);
 		} catch (e) {
 			$.writeln('Error exporting sequence: ' + e.message);
 		}
-
+	
 		$.writeln('Finished saveSequenceToReadyForExport');
-
 	},
 
-	// Helper function to duplicate an existing sequence
-	duplicateSequence: function(sequence, newSequenceName) {
-		// Assuming you have a method to duplicate a sequence
-		// You will need to handle this based on available functions in your environment
-		var newSequence = app.project.createNewSequence(newSequenceName, sequence);
-		return newSequence;
-	},
 
-	// Helper function to find bin index
-	findBinIndex: function(rootItem, targetBinName) {
-		globalBind = null; // Initialize globalBind to null
-		for (var i = 0; i < rootItem.children.numItems; i++) {
-			if (rootItem.children[i].name === targetBinName) {
-				globalBind = rootItem.children[i];
-				break;
-			}
-		}
-		if (!globalBind) {
-			$.writeln('Error: Bin "' + targetBinName + '" not found.');
-		}
-	},
+	// // Helper function to find bin index
+	// findBinIndex: function(rootItem, targetBinName) {
+	// 	globalBind = null; // Initialize globalBind to null
+	// 	for (var i = 0; i < rootItem.children.numItems; i++) {
+	// 		if (rootItem.children[i].name === targetBinName) {
+	// 			globalBind = rootItem.children[i];
+	// 			break;
+	// 		}
+	// 	}
+	// 	if (!globalBind) {
+	// 		$.writeln('Error: Bin "' + targetBinName + '" not found.');
+	// 	}
+	// },
 
-	// Helper function to render the active sequence
-	renderActiveSeq: function() {
-		var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_preset.epr";
-		var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
-		app.encoder.encodeSequence(app.project.activeSequence, outputPath, outputPresetPath, app.encoder.ENCODE_WORK_AREA);
-	},
-
-	// Helper function to get clips from a sequence
-	getClipsFromSequence: function(sequence) {
-		var clipsArray = [];
-		var videoTracks = sequence.videoTracks;
-
-		for (var i = 0; i < videoTracks.numTracks; i++) {
-			var track = videoTracks[i];
-			for (var j = 0; j < track.clips.numItems; j++) {
-				clipsArray.push(track.clips[j].projectItem);
-			}
-		}
-
-		return clipsArray;
-	},
+	// // Helper function to render the active sequence
+	// renderActiveSeq: function(outputPath, outputPresetPath) {
+	// 	app.encoder.encodeSequence(app.project.activeSequence, outputPath, outputPresetPath, 2, 0);
+	// },
 
 	// Helper function to extend the duration of a TrackItem
 	extendTrackItemDuration: function(trackItem, newDurationInSeconds) {
@@ -674,9 +596,11 @@ $.runScript = {
 		}
 	},
 
-	// Helper function to create a new sequence from an existing sequence
-	createNewSequenceFromSequence: function(newSequenceName, originalSequence) {
-		// Assuming this method is available in your scripting environment
-		return app.project.createNewSequenceFromSequence(newSequenceName, originalSequence);
+
+	updateEventPanel : function (message) {
+		app.setSDKEventMessage(message, 'info');
+		/*app.setSDKEventMessage('Here is some information.', 'info');
+		app.setSDKEventMessage('Here is a warning.', 'warning');
+		app.setSDKEventMessage('Here is an error.', 'error');  // Very annoying; use sparingly.*/
 	},
 }
