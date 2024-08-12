@@ -252,7 +252,7 @@ $.runScript = {
 				}
 
 				// Replace text graphics layer in the sequence named "Add Name Company" with the folder name
-				this.updateTextLayer(importedFolder.folderName);
+				this.updateTextInGraphic(importedFolder.folderName);
 
 				// Save sequence to "Ready for Export" bin
 				this.saveSequenceToReadyForExport(importedFolder.folderName);
@@ -266,87 +266,65 @@ $.runScript = {
 		$.writeln('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _');
 	},
 
-	updateTextLayer: function(folderName) {
-		$.writeln('Updating text layer with folder name: ' + folderName);
-		
-		// Check if folderName is undefined or empty
-		if (!folderName) {
-			$.writeln('Error: folderName is undefined or empty.');
-			return;
-		}
-		
-		// Find the sequence named "Add Name Company"
+	updateTextInGraphic: function(folderName) {
+		$.writeln('Updating text in graphic layer...');
+
 		var sequenceName = "Add Name Company";
 		var sequence = this.findSequenceByName(sequenceName);
-		
+	
 		if (!sequence) {
-			$.writeln('Sequence "' + sequenceName + '" not found.');
+			$.writeln('Sequence named "' + sequenceName + '" not found');
 			return;
 		}
-		
-		$.writeln('Sequence "' + sequenceName + '" found.');
-		
-		var track = sequence.videoTracks[1];
-		$.writeln('Processing second track: ' + track.name);
-		
-		var localPath = "C:\\Users\\OMEN 15 Pro\\Desktop\\mytemplates\\Yemi moGRT\\Yemi moGRT Demo.mogrt";
-		var time = '0';
-		var vidTrack = 1;
-		var audTrack = 0;
-		
-		// Check if there are clips in the second track
-		if (track.clips.numItems > 0) {
-			$.writeln('Found ' + track.clips.numItems + ' clips in the second track.');
-			
-			// Remove all clips from the second track
-			for (var i = track.clips.numItems - 1; i >= 0; i--) {
-				track.clips[i].remove(true, true);
-			}
-			$.writeln('All clips removed from ' + track.name);
-		} else {
-			$.writeln('No clips found in the second track.');
-		}
-		
-		// Import new MoGRT
-		try {
-			var newMOGRT = sequence.importMGT(localPath, time, vidTrack, audTrack);
-			$.writeln('New MoGRT imported: ' + newMOGRT);
-
-			if (newMOGRT) {
-				$.writeln('newMOGRT found: ' + newMOGRT.name);
-
-				// Access the MoGRT Components
-				var components = newMOGRT.getMGTComponent();
-				$.writeln('Components found: ' + components);
-
-				if (components) {
-					// Check for the 'getParamForDisplayName' method and set the value
-					for (var i = 0; i < components.properties.numItems; i++) {
-						var property = components.properties[i];
-						$.writeln('Property ' + i + ': ' + property.displayName);
 	
-						if (property.displayName === 'Yemi moGRT Demo') {
-							property.setValue(folderName);
-							$.writeln('Text layer updated with: ' + folderName);
-						}
-					}
-				} else {
-					$.writeln('No components found in the MoGRT.');
-				}
-			} else {
-				$.writeln('Failed to import MoGRT.');
-			}
-		} catch (e) {
-			$.writeln('Error importing MoGRT: ' + e.message);
+		$.writeln('Sequence found: ' + sequence.sequenceID);
+		
+		var trackIndex = 1; // Assuming text is on the second track
+		var track = sequence.videoTracks[trackIndex];
+	
+		if (!track) {
+			$.writeln('Error: Video track ' + trackIndex + ' does not exist.');
+			return;
 		}
+	
+		$.writeln('Processing track: ' + track.name);
+	
+		var clipIndex = 0; // Assuming the text layer is the first clip in the track
+		var clip = track.clips[clipIndex];
+	
+		if (!clip) {
+			$.writeln('Error: Clip ' + clipIndex + ' does not exist.');
+			return;
+		}
+	
+		$.writeln('Processing clip: ' + clip.name);
+	
+		// Access the components of the clip (like the text layer)
+		var textComponent = clip.components[3];
+
+		if (!textComponent) {
+			$.writeln('Error: Text component not found.');
+			return;
+		}
+	
+		// Access the "Source Text" property within the "Text" component
+		var sourceTextProperty = textComponent.properties[0]; // "Source Text" is at index 0
+	
+		if (!sourceTextProperty) {
+			$.writeln('Error: Source Text property not found.');
+			return;
+		}
+	
+		// Change the text
+		sourceTextProperty.setValue(folderName);
+	
+		$.writeln('Text layer updated successfully with: ' + folderName);
 	},
+	
 
-
-	 
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
 		var sequence = this.findSequenceByName(sequenceName);
-		var newDurationInSeconds = 1200;
 	
 		if (!sequence) {
 			$.writeln('Sequence named "' + sequenceName + '" not found');
@@ -354,7 +332,7 @@ $.runScript = {
 		}
 	
 		$.writeln('Sequence found: ' + sequence.name);
-		this.replaceFileInSequence(sequence, pngFile, newDurationInSeconds);
+		this.replaceFileInSequence(sequence, pngFile);
 	},
 
 	processVideo: function(mp4File) {
@@ -391,19 +369,19 @@ $.runScript = {
 	},	
 	
 	// Function to replace a screenshot in a specific sequence
-	replaceFileInSequence: function(sequence, pngFile, newDurationInSeconds) {
+	replaceFileInSequence: function(sequence, pngFile) {
 		$.writeln('Clearing sequence before placing new file');
 		
 		var videoTracks = sequence.videoTracks;
 
 		// Ensure the sequence has at east two video tracks
-		if (videoTracks.numTracks < 2) {
+		if (videoTracks.numTracks < 1) {
 			$.writeln('Sequence does not have a second video track');
 			return;
 		}
 
 		// Process only the second video track (index 1)
-		var secondTrack = videoTracks[1];
+		var secondTrack = videoTracks[0];
 		$.writeln('Processing second track: ' + secondTrack.name);
 
 		// Check if there is more than one clip in the second track 
@@ -420,12 +398,21 @@ $.runScript = {
 			try {
 				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 				var newClip = secondTrack.insertClip(pngFile, startTime);
-				
-				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name);
-				
-				
 
+				if (newClip) {
+					$.writeln('New clip inserted into the first track ' + secondTrack.name);
 
+					// Increase the duration of the clip to 127 seconds
+					var time = new Time(); // Start time in the sequence (e.g., 0 for beginning)
+					time.seconds = 127;
+					endTime = time.seconds;
+					newClip.end = newClip.start + endTime;
+
+					$.writeln('Clip duration extended to 127 seconds.');
+				} else {
+					$.writeln('Failed to insert new image into the first track.')
+				}
+				
 			} catch (e) {
 				$.writeln('Error inserting new image: ' + e.message);
 			}
@@ -437,15 +424,29 @@ $.runScript = {
 			try {
 				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
 				var newClip = secondTrack.insertClip(pngFile, startTime);
-				
+
+				if (newClip) {
+					$.writeln('New clip inserted into the first track ' + secondTrack.name);
+
+					// Increase the duration of the clip to 127 seconds
+					var time = new Time();
+					time.seconds = 127;
+					var endTime = time.seconds
+					newClip.end = newClip.start + endTime;
+
+					$.writeln('Clip duration extended to 127 seconds. ' + newClip.end);
+				} else {
+					$.writeln('Failed to insert new image into the first track.')
+				}
 				
 				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name + newClip.type);
 				
 				
 				$.writeln("Duration extended successfully.");
 
+			
 			} catch (e) {
-				$.writeln('Error inserting new image: ' + e.message);
+				$.writeln('Error inserting PngFile: ' + e.message);
 			}
 		}
 	},
@@ -481,7 +482,7 @@ $.runScript = {
 
 			// Insert the new video into the first track
 			try {
-				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				var startTime = 51; // Start time in the sequence (e.g., 0 for beginning)
 				firstTrack.insertClip(newVideo, startTime);
 				firstAudio.insertClip(newVideo, startTime);
 	
@@ -495,11 +496,13 @@ $.runScript = {
 			$.writeln('First track is empty. Adding new video.');
 
 			try {
-				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+				var time = new Time(); // Start time in the sequence (e.g., 0 for beginning)
+				time.seconds = 51;
+				startTime = time.seconds;
 				firstTrack.insertClip(newVideo, startTime);
 				firstAudio.insertClip(newVideo, startTime);
 	
-				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name);
+				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name + 'at: ' + startTime);
 			} catch (e) {
 				$.writeln('Error inserting new video: ' + e.message);
 			}
@@ -532,18 +535,18 @@ $.runScript = {
 	
 		$.writeln('Sequence found: ' + sequence.sequenceID);
 	
-		// Export the sequence directly from Premiere Pro
+		// Export the sequence from Premiere PRO using Media Encoder.
 		try {
 
-			// var sequence = sequence;
-			// var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
-			// var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_preset.epr";
-			// app.encoder.launchEncoder();
-			// $.writeln('Media Encoder launched.');
+			var sequence = sequence;
+			var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
+			var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi2_preset.epr";
+			app.encoder.launchEncoder();
+			$.writeln('Media Encoder launched.');
 
-			// app.encoder.encodeSequence(sequence, outputPath, outputPresetPath, 0, 1);
+			app.encoder.encodeSequence(sequence, outputPath, outputPresetPath, 0, 1);
 
-			// app.encoder.startBatch();
+			app.encoder.startBatch();
 			
 		} catch (e) {
 			$.writeln('Error exporting sequence: ' + e.message);
@@ -553,49 +556,24 @@ $.runScript = {
 	},
 
 
-	// // Helper function to find bin index
-	// findBinIndex: function(rootItem, targetBinName) {
-	// 	globalBind = null; // Initialize globalBind to null
-	// 	for (var i = 0; i < rootItem.children.numItems; i++) {
-	// 		if (rootItem.children[i].name === targetBinName) {
-	// 			globalBind = rootItem.children[i];
-	// 			break;
-	// 		}
-	// 	}
-	// 	if (!globalBind) {
-	// 		$.writeln('Error: Bin "' + targetBinName + '" not found.');
-	// 	}
-	// },
-
-	// // Helper function to render the active sequence
-	// renderActiveSeq: function(outputPath, outputPresetPath) {
-	// 	app.encoder.encodeSequence(app.project.activeSequence, outputPath, outputPresetPath, 2, 0);
-	// },
-
-	// Helper function to extend the duration of a TrackItem
-	extendTrackItemDuration: function(trackItem, newDurationInSeconds) {
-		$.writeln('Starting extendTrackItemDuration function');
-
-		try {
-			var currentInPoint = trackItem.inPoint;  // Get the current in point of the TrackItem
-			var currentOutPoint = trackItem.outPoint; // Get the current out point of the TrackItem
-			
-			var currentDuration = currentOutPoint - currentInPoint; // Calculate the current duration
-			var newDuration = newDurationInSeconds; // Use seconds directly
-			
-			if (newDuration > currentDuration) {
-				var newOutPoint = currentInPoint + newDuration; // Calculate the new out point
-				
-				trackItem.outPoint = newOutPoint; // Set the new out point
-				$.writeln('Extended duration of TrackItem to: ' + newDurationInSeconds + ' seconds');
-			} else {
-				$.writeln('New duration must be greater than the current duration.');
+	// Helper function to find bin index
+	findBinIndex: function(rootItem, targetBinName) {
+		globalBind = null; // Initialize globalBind to null
+		for (var i = 0; i < rootItem.children.numItems; i++) {
+			if (rootItem.children[i].name === targetBinName) {
+				globalBind = rootItem.children[i];
+				break;
 			}
-		} catch (e) {
-			$.writeln('Error extending TrackItem duration: ' + e.message);
+		}
+		if (!globalBind) {
+			$.writeln('Error: Bin "' + targetBinName + '" not found.');
 		}
 	},
 
+	// Helper function to render the active sequence
+	renderActiveSeq: function(outputPath, outputPresetPath) {
+		app.encoder.encodeSequence(app.project.activeSequence, outputPath, outputPresetPath, 2, 0);
+	},
 
 	updateEventPanel : function (message) {
 		app.setSDKEventMessage(message, 'info');
