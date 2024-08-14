@@ -268,7 +268,7 @@ $.runScript = {
 
 	updateTextInGraphic: function(folderName) {
 		$.writeln('Updating text in graphic layer...');
-
+	
 		var sequenceName = "Add Name Company";
 		var sequence = this.findSequenceByName(sequenceName);
 	
@@ -299,13 +299,26 @@ $.runScript = {
 	
 		$.writeln('Processing clip: ' + clip.name);
 	
+		// Loop through all components to identify and log them
+		for (var i = 0; i < clip.components.numItems; i++) {
+			var component = clip.components[i];
+			$.writeln('Component ' + i + ': ' + component.displayName);
+	
+			for (var j = 0; j < component.properties.numItems; j++) {
+				var property = component.properties[j];
+				$.writeln(' Property ' + j + ': ' + property.displayName);
+			}
+		}
+		
 		// Access the components of the clip (like the text layer)
 		var textComponent = clip.components[3];
-
+	
 		if (!textComponent) {
 			$.writeln('Error: Text component not found.');
 			return;
 		}
+	
+		$.writeln('Text Component found: ' + textComponent.displayName);
 	
 		// Access the "Source Text" property within the "Text" component
 		var sourceTextProperty = textComponent.properties[0]; // "Source Text" is at index 0
@@ -315,13 +328,26 @@ $.runScript = {
 			return;
 		}
 	
-		// Change the text
-		sourceTextProperty.setValue(folderName);
+		$.writeln('Source Text Property found: ' + sourceTextProperty.displayName);
 	
-		$.writeln('Text layer updated successfully with: ' + folderName);
+		// Log the current value of the Source Text property
+		var currentValue = sourceTextProperty.getValue();
+		$.writeln('Current Source Text value: ' + currentValue);
+	
+		// Log the type of the current value
+		$.writeln('Source Text value type: ' + typeof currentValue);
+	
+		// If the value is a string, log its length
+		if (typeof currentValue === 'string') {
+			$.writeln('Source Text length: ' + currentValue.length);
+
+			sourceTextProperty.setValue(folderName);
+			$.writeln('Text layer updated successfully with: ' + folderName);
+		} else {
+			$.writeln('Error: Source Text value is not a string.');
+		}
 	},
 	
-
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
 		var sequence = this.findSequenceByName(sequenceName);
@@ -367,7 +393,7 @@ $.runScript = {
 		$.writeln('No matching file found in bin: ' + bin.name);
 		return null;
 	},	
-	
+
 	// Function to replace a screenshot in a specific sequence
 	replaceFileInSequence: function(sequence, pngFile) {
 		$.writeln('Clearing sequence before placing new file');
@@ -451,64 +477,122 @@ $.runScript = {
 		}
 	},
 
-
-	// Function to replace a video in a specific sequence
-	replaceVideoInSequence: function(sequence, newVideo) {
+	
+	// Function to replace a screenshot in a specific sequence
+	replaceVideoInSequence: function(sequence, mp4File) {
 		$.writeln('Starting replaceVideoInSequence function');
 		
 		var videoTracks = sequence.videoTracks;
 		var audioTracks = sequence.audioTracks;
-
-		
-		// Process only the first video track (index 0)
+	
+		// Process only the first video and audio tracks
 		var firstTrack = videoTracks[0];
 		var firstAudio = audioTracks[0];
 		$.writeln('Processing first track: ' + firstTrack.name);
-
-		// Check if there are no videos in the first track
+	
+		// Check if there are any clips in the first track
 		if (firstTrack.clips.numItems > 0) {
 			$.writeln('Found ' + firstTrack.clips.numItems + ' videos in the first track. Removing all videos.');
-
+	
 			// Remove all clips from the first video and audio tracks
 			for (var i = firstTrack.clips.numItems - 1; i >= 0; i--) {
 				firstTrack.clips[i].remove(true, true);
 			}
-
+	
 			for (var j = firstAudio.clips.numItems - 1; j >= 0; j--) {
 				firstAudio.clips[j].remove(true, true);
 			}
-
+	
 			$.writeln('All clips removed from ' + firstTrack.name);
-
-			// Insert the new video into the first track
-			try {
-				var startTime = 51; // Start time in the sequence (e.g., 0 for beginning)
-				firstTrack.insertClip(newVideo, startTime);
-				firstAudio.insertClip(newVideo, startTime);
-	
-				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name);
-			} catch (e) {
-				$.writeln('Error inserting new video: ' + e.message);
-			}
-			
 		} else {
-			// If there are no clips, insert the new video into the first track
-			$.writeln('First track is empty. Adding new video.');
-
-			try {
-				var time = new Time(); // Start time in the sequence (e.g., 0 for beginning)
-				time.seconds = 51;
-				startTime = time.seconds;
-				firstTrack.insertClip(newVideo, startTime);
-				firstAudio.insertClip(newVideo, startTime);
-	
-				$.writeln('Successfully inserted new video into the first track: ' + newVideo.name + 'at: ' + startTime);
-			} catch (e) {
-				$.writeln('Error inserting new video: ' + e.message);
-			}
+			$.writeln('First track is empty. Ready to add new video.');
 		}
+
+		$.writeln('Type of mp4 File: ' + typeof(mp4File));
+	
+		// Ensure the new video was imported correctly before proceeding
+		if (!mp4File) {
+			$.writeln('Error: mp4File is null or undefined.');
+			return;
+		}
+	
+		// Insert the new video into the first track at 51.79 seconds and trim to 5.835 seconds
+		try {
+			var startTime = new Time();
+			startTime.seconds = 51.79;
+			
+			var newClipTime = new Time();
+			newClipTime.seconds = 57.625;
+	
+			// Insert video clip into the first track
+			var insertedVideoClip = firstTrack.insertClip(mp4File, startTime.seconds);
+			$.writeln('Inserted video clip: ' + insertedVideoClip);
+
+			// Insert video clip into the first track
+			var newVideoClip = firstTrack.insertClip(mp4File, newClipTime.seconds);
+			$.writeln('Inserted video clip: ' + newVideoClip);
+	
+			// Remove the second video clip after creating it 
+			for (var k = firstTrack.clips.numItems - 1; k> 0; k--) {
+				firstTrack.clips[k].remove(true, true);
+			}
+			$.writeln('Removed all clips after the first one.');
+
+			// Remove all audio clips after the first one
+			for (var l = firstAudio.clips.numItems - 1; l > 0; l--) {
+				firstAudio.clips[l].remove(true, true);
+			}
+			$.writeln('Removed all audio clips after the first one.');
+
+			this.freezeFrameAndExtendDuration(insertedVideoClip, 51.79);
+	
+		} catch (e) {
+			$.writeln('Error inserting new video: ' + e.message);
+		}
+
 	},
 
+	freezeFrameAndExtendDuration: function(clip, newDurationSeconds) {
+		$.writeln('Starting freezeFrameAndExtendDuration function');
+		
+		if (!clip || !clip.projectItem) {
+			$.writeln('Error: Clip or project item is not valid.');
+			return;
+		}
+	
+		try {
+			// Retrieve the frame rate and ensure it's valid
+			var interpretation = clip.projectItem.getFootageInterpretation();
+			if (!interpretation) {
+				$.writeln('Error: Could not retrieve footage interpretation.');
+				return;
+			}
+	
+			var frameRate = interpretation.frameRate;
+			if (!frameRate || frameRate <= 0) {
+				$.writeln('Error: Invalid frame rate.');
+				return;
+			}
+	
+			// Calculate the duration of one frame
+			var oneFrameDuration = new Time();
+			oneFrameDuration.seconds = 1 / frameRate;
+			
+			// Set the out point of the clip to 1 frame after the in point
+			clip.end = clip.start.seconds + oneFrameDuration.seconds;
+			$.writeln('Set clip out point to 1 frame after the start: ' + clip.end.seconds);
+	
+			// Extend the duration of the frozen frame
+			clip.end = clip.start.seconds + newDurationSeconds;
+			$.writeln('Extended frozen frame duration to: ' + newDurationSeconds + ' seconds');
+	
+		} catch (e) {
+			$.writeln('Error freezing frame and extending duration: ' + e.message);
+		}
+	},
+	
+	
+	
     findSequenceByName: function(name) {
         for (var i = 0; i < app.project.sequences.numSequences; i++) {
             if (app.project.sequences[i].name === name) {
@@ -581,4 +665,5 @@ $.runScript = {
 		app.setSDKEventMessage('Here is a warning.', 'warning');
 		app.setSDKEventMessage('Here is an error.', 'error');  // Very annoying; use sparingly.*/
 	},
-}
+
+}	
