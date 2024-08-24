@@ -251,8 +251,10 @@ $.runScript = {
 					$.writeln('MP4 file not found in folder: ' + importedFolder.folderName);
 				}
 
+				var mogrtFilePath = "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2023\\Essential Graphics\\company_name_mogrt.mogrt";
+
 				// Replace text graphics layer in the sequence named "Add Name Company" with the folder name
-				this.updateTextInGraphic(importedFolder.folderName);
+				this.updateTextInGraphic(importedFolder.folderName, mogrtFilePath);
 
 				// Save sequence to "Ready for Export" bin
 				this.saveSequenceToReadyForExport(importedFolder.folderName);
@@ -266,7 +268,7 @@ $.runScript = {
 		$.writeln('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _');
 	},
 
-	updateTextInGraphic: function(folderName) {
+	updateTextInGraphic: function(folderName, mogrtFilePath) {
 		$.writeln('Updating text in graphic layer...');
 	
 		var sequenceName = "Add Name Company";
@@ -278,7 +280,7 @@ $.runScript = {
 		}
 	
 		$.writeln('Sequence found: ' + sequence.sequenceID);
-		
+	
 		var trackIndex = 1; // Assuming text is on the second track
 		var track = sequence.videoTracks[trackIndex];
 	
@@ -292,61 +294,105 @@ $.runScript = {
 		var clipIndex = 0; // Assuming the text layer is the first clip in the track
 		var clip = track.clips[clipIndex];
 	
-		if (!clip) {
-			$.writeln('Error: Clip ' + clipIndex + ' does not exist.');
-			return;
-		}
-	
-		$.writeln('Processing clip: ' + clip.name);
-	
-		// Loop through all components to identify and log them
-		for (var i = 0; i < clip.components.numItems; i++) {
-			var component = clip.components[i];
-			$.writeln('Component ' + i + ': ' + component.displayName);
-	
-			for (var j = 0; j < component.properties.numItems; j++) {
-				var property = component.properties[j];
-				$.writeln(' Property ' + j + ': ' + property.displayName);
-			}
-		}
-		
-		// Access the components of the clip (like the text layer)
-		var textComponent = clip.components[3];
-	
-		if (!textComponent) {
-			$.writeln('Error: Text component not found.');
-			return;
-		}
-	
-		$.writeln('Text Component found: ' + textComponent.displayName);
-	
-		// Access the "Source Text" property within the "Text" component
-		var sourceTextProperty = textComponent.properties[0]; // "Source Text" is at index 0
-	
-		if (!sourceTextProperty) {
-			$.writeln('Error: Source Text property not found.');
-			return;
-		}
-	
-		$.writeln('Source Text Property found: ' + sourceTextProperty.displayName);
-	
-		// Log the current value of the Source Text property
-		var currentValue = sourceTextProperty.getValue();
-		$.writeln('Current Source Text value: ' + currentValue);
-	
-		// Log the type of the current value
-		$.writeln('Source Text value type: ' + typeof currentValue);
-	
-		// If the value is a string, log its length
-		if (typeof currentValue === 'string') {
-			$.writeln('Source Text length: ' + currentValue.length);
-
-			sourceTextProperty.setValue(folderName);
-			$.writeln('Text layer updated successfully with: ' + folderName);
+		if (clip) {
+			$.writeln('Clip found, removing it...');
+			clip.remove(true, true);
 		} else {
-			$.writeln('Error: Source Text value is not a string.');
+			$.writeln('No clip found at index ' + clipIndex);
+		}
+	
+		// Import the MoGRT file
+		$.writeln('Importing MoGRT file from path: ' + mogrtFilePath);
+		var mogrtFile = new File(mogrtFilePath);
+	
+		if (!mogrtFile.exists) {
+			$.writeln('Error: MoGRT file not found at ' + mogrtFilePath);
+			return;
+		}
+	
+		var targetTime = sequence.getPlayerPosition();
+		var vidTrackOffset = 0;
+		var audTrackOffset = 0;
+		var newTrackItem = sequence.importMGT(mogrtFile.fsName, targetTime.ticks, vidTrackOffset, audTrackOffset);
+	
+		if (!newTrackItem) {
+			$.writeln('Error: Failed to import MoGRT file.');
+			return;
+		}
+	
+		$.writeln('MoGRT file imported successfully. Checking for components...');
+	
+		// Iterate through all components in the imported track item
+		if (newTrackItem.components && newTrackItem.components.numItems > 0) {
+			$.writeln('Components found in the imported track item:');
+			for (var i = 0; i < newTrackItem.components.numItems; i++) {
+				var component = newTrackItem.components[i];
+				$.writeln(' Component ' + i + ': ' + component.displayName);
+	
+				// Iterate through all properties of the current component
+				if (component.properties && component.properties.numItems > 0) {
+					$.writeln('  Properties found in Component ' + i + ':');
+					for (var j = 0; j < component.properties.numItems; j++) {
+						var property = component.properties[j];
+						$.writeln('   Property ' + j + ': ' + property.displayName + ' (Type: ' + property.propertyType + ')');
+	
+						// Log the value of the property if possible
+						try {
+							var value = property.getValue();
+							$.writeln('   Property Value: ' + JSON.stringify(value, null, 2));
+	
+							// Check if this is the "NAME COMPANY" property
+							if (property.displayName === "NAME COMPANY") {
+								$.writeln('   Found "NAME COMPANY" property. Updating text...');
+	
+								var updatedValue = JSON.parse(value); // Parse the current JSON value
+								updatedValue.textEditValue = folderName; // Update the textEditValue with the new text
+								property.setValue(JSON.stringify(updatedValue)); // Set the updated JSON value
+	
+								$.writeln('   Text updated to: ' + folderName);
+							}
+						} catch (error) {
+							$.writeln('   Error retrieving or updating value for Property ' + j + ': ' + error.toString());
+						}
+					}
+				} else {
+					$.writeln('  No properties found in Component ' + i + '.');
+				}
+			}
+		} else {
+			$.writeln('No components found in the imported track item.');
 		}
 	},
+	
+	
+	
+	importMoGRT: function(mogrtFilePath) {
+		var activeSeq = app.project.activeSequence;
+		if (activeSeq) {
+			var mogrtToImport = new File(mogrtFilePath);
+			if (mogrtToImport.exists) {
+				var targetTime = activeSeq.getPlayerPosition();
+				var vidTrackOffset = 0;
+				var audTrackOffset = 0;
+				var newTrackItem = activeSeq.importMGT(mogrtToImport.fsName, targetTime.ticks, vidTrackOffset, audTrackOffset);
+				if (newTrackItem) {
+					var moComp = newTrackItem.getMGTComponent();
+					if (moComp) {
+						var params = moComp.properties;
+						var srcTextParam = params.getParamForDisplayName("Source Text");
+						if (srcTextParam) {
+							srcTextParam.setValue("New value set by PProPanel!");
+						}
+					}
+				}
+			} else {
+				$.writeln('Unable to import specified .mogrt file.');
+			}
+		} else {
+			$.writeln('No active sequence.');
+		}
+	},
+	
 	
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
@@ -374,7 +420,6 @@ $.runScript = {
 		this.replaceVideoInSequence(sequence, mp4File);
 	},
 
-	
 	// Utility function to find a file matching a regex in a bin
 	findFileInBin: function(bin, regex) {
 		$.writeln('Searching in bin: ' + bin.name + ' for files matching: ' + regex);
@@ -394,90 +439,63 @@ $.runScript = {
 		return null;
 	},	
 
-	// Function to replace a screenshot in a specific sequence
 	replaceFileInSequence: function(sequence, pngFile) {
 		$.writeln('Clearing sequence before placing new file');
-		
+
+		if (!pngFile || typeof pngFile !== 'object') {
+			$.writeln('pngFile is undefined or not a valid object');
+			return;
+		}
+
+		$.writeln('pngFile name: ' + pngFile.name);
+		if (pngFile.path) {
+			$.writeln('pngFile path: ' + pngFile.path);
+		}
+
 		var videoTracks = sequence.videoTracks;
 
-		// Ensure the sequence has at east two video tracks
-		if (videoTracks.numTracks < 1) {
+		if (videoTracks.numTracks < 2) {
 			$.writeln('Sequence does not have a second video track');
 			return;
 		}
 
-		// Process only the second video track (index 1)
 		var secondTrack = videoTracks[0];
 		$.writeln('Processing second track: ' + secondTrack.name);
 
-		// Check if there is more than one clip in the second track 
 		if (secondTrack.clips.numItems > 0) {
-			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Removing the track.');
+			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Removing them.');
 
-			// Remove all clips from the second track
 			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
 				secondTrack.clips[i].remove(true, true);
 			}
 			$.writeln('All clips removed from ' + secondTrack.name);
-
-			// Insert the new clip into the second track
-			try {
-				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-				var newClip = secondTrack.insertClip(pngFile, startTime);
-
-				if (newClip) {
-					$.writeln('New clip inserted into the first track ' + secondTrack.name);
-
-					// Increase the duration of the clip to 127 seconds
-					var time = new Time(); // Start time in the sequence (e.g., 0 for beginning)
-					time.seconds = 127;
-					endTime = time.seconds;
-					newClip.end = newClip.start + endTime;
-
-					$.writeln('Clip duration extended to 127 seconds.');
-				} else {
-					$.writeln('Failed to insert new image into the first track.')
-				}
-				
-			} catch (e) {
-				$.writeln('Error inserting new image: ' + e.message);
-			}
 		} else {
-			// If there are no clips, insert the new clip into the second track
-			$.writeln('Second track is empty. Adding new file.');
-			var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
+			$.writeln('Second track is empty.');
+		}
 
-			try {
-				var startTime = 0; // Start time in the sequence (e.g., 0 for beginning)
-				var newClip = secondTrack.insertClip(pngFile, startTime);
+		try {
+			var startTime = 0;
+			$.writeln('Attempting to insert clip...');
+			var newClip = secondTrack.insertClip(pngFile, startTime);
+			$.writeln('Type of newClip is: ' + typeof(newClip));
 
-				if (newClip) {
-					$.writeln('New clip inserted into the first track ' + secondTrack.name);
+			if (newClip && typeof newClip === 'object') {
+				$.writeln('New clip inserted into the second track: ' + secondTrack.name);
 
-					// Increase the duration of the clip to 127 seconds
-					var time = new Time();
-					time.seconds = 127;
-					var endTime = time.seconds
-					newClip.end = newClip.start + endTime;
+				var duration = 127; // seconds
+				newClip.end.seconds = newClip.start.seconds + duration;
 
-					$.writeln('Clip duration extended to 127 seconds. ' + newClip.end);
-				} else {
-					$.writeln('Failed to insert new image into the first track.')
-				}
-				
-				$.writeln('Successfully inserted new image into the first track: ' + pngFile.name + newClip.type);
-				
-				
-				$.writeln("Duration extended successfully.");
-
-			
-			} catch (e) {
-				$.writeln('Error inserting PngFile: ' + e.message);
+				$.writeln('Clip duration set to 127 seconds. Clip ends at: ' + newClip.end.seconds);
+			} else {
+				$.writeln('Failed to insert new image into the second track.');
 			}
+
+		} catch (e) {
+			$.writeln('Error inserting new image: ' + e.message);
 		}
 	},
 
-	
+
 	// Function to replace a screenshot in a specific sequence
 	replaceVideoInSequence: function(sequence, mp4File) {
 		$.writeln('Starting replaceVideoInSequence function');
@@ -527,6 +545,7 @@ $.runScript = {
 			// Insert video clip into the first track
 			var insertedVideoClip = firstTrack.insertClip(mp4File, startTime.seconds);
 			$.writeln('Inserted video clip: ' + insertedVideoClip);
+			$.writeln('This is the type of insertedVideoClip: ' + typeof(insertedVideoClip));
 
 			// Insert video clip into the first track
 			var newVideoClip = firstTrack.insertClip(mp4File, newClipTime.seconds);
@@ -544,7 +563,7 @@ $.runScript = {
 			}
 			$.writeln('Removed all audio clips after the first one.');
 
-			this.freezeFrameAndExtendDuration(insertedVideoClip, 51.79);
+			this.freezeFrameAndExtendDuration(mp4File, 51.79);
 	
 		} catch (e) {
 			$.writeln('Error inserting new video: ' + e.message);
@@ -552,47 +571,47 @@ $.runScript = {
 
 	},
 
-	freezeFrameAndExtendDuration: function(clip, newDurationSeconds) {
+	freezeFrameAndExtendDuration: function(insertedVideoClip, newDurationSeconds) {
 		$.writeln('Starting freezeFrameAndExtendDuration function');
-		
-		if (!clip || !clip.projectItem) {
+		var clip = insertedVideoClip;
+		$.writeln('The clip type is: ' + typeof(clip));
+
+		if (!clip) {
 			$.writeln('Error: Clip or project item is not valid.');
 			return;
 		}
-	
+
 		try {
 			// Retrieve the frame rate and ensure it's valid
-			var interpretation = clip.projectItem.getFootageInterpretation();
+			var interpretation = clip.getFootageInterpretation();
 			if (!interpretation) {
 				$.writeln('Error: Could not retrieve footage interpretation.');
 				return;
 			}
-	
+
 			var frameRate = interpretation.frameRate;
 			if (!frameRate || frameRate <= 0) {
 				$.writeln('Error: Invalid frame rate.');
 				return;
 			}
-	
+
 			// Calculate the duration of one frame
-			var oneFrameDuration = new Time();
-			oneFrameDuration.seconds = 1 / frameRate;
-			
+			var oneFrameDuration = 1 / frameRate; // seconds per frame
+
 			// Set the out point of the clip to 1 frame after the in point
-			clip.end = clip.start.seconds + oneFrameDuration.seconds;
+			var newEndTime = clip.start.seconds + oneFrameDuration;
+			clip.end.seconds = newEndTime;
 			$.writeln('Set clip out point to 1 frame after the start: ' + clip.end.seconds);
-	
+
 			// Extend the duration of the frozen frame
-			clip.end = clip.start.seconds + newDurationSeconds;
+			clip.end.seconds = clip.start.seconds + newDurationSeconds;
 			$.writeln('Extended frozen frame duration to: ' + newDurationSeconds + ' seconds');
-	
+
 		} catch (e) {
 			$.writeln('Error freezing frame and extending duration: ' + e.message);
 		}
 	},
-	
-	
-	
+
     findSequenceByName: function(name) {
         for (var i = 0; i < app.project.sequences.numSequences; i++) {
             if (app.project.sequences[i].name === name) {
