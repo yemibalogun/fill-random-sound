@@ -324,32 +324,26 @@ $.runScript = {
 	
 		// Iterate through all components in the imported track item
 		if (newTrackItem.components && newTrackItem.components.numItems > 0) {
-			$.writeln('Components found in the imported track item:');
+			
 			for (var i = 0; i < newTrackItem.components.numItems; i++) {
 				var component = newTrackItem.components[i];
-				$.writeln(' Component ' + i + ': ' + component.displayName);
-	
+				
 				// Iterate through all properties of the current component
 				if (component.properties && component.properties.numItems > 0) {
-					$.writeln('  Properties found in Component ' + i + ':');
 					for (var j = 0; j < component.properties.numItems; j++) {
 						var property = component.properties[j];
-						$.writeln('   Property ' + j + ': ' + property.displayName + ' (Type: ' + property.propertyType + ')');
-	
+
 						// Log the value of the property if possible
 						try {
 							var value = property.getValue();
-							$.writeln('   Property Value: ' + JSON.stringify(value, null, 2));
-	
+							
 							// Check if this is the "NAME COMPANY" property
 							if (property.displayName === "NAME COMPANY") {
-								$.writeln('   Found "NAME COMPANY" property. Updating text...');
-	
+								
 								var updatedValue = JSON.parse(value); // Parse the current JSON value
 								updatedValue.textEditValue = folderName; // Update the textEditValue with the new text
 								property.setValue(JSON.stringify(updatedValue)); // Set the updated JSON value
 	
-								$.writeln('   Text updated to: ' + folderName);
 							}
 						} catch (error) {
 							$.writeln('   Error retrieving or updating value for Property ' + j + ': ' + error.toString());
@@ -404,6 +398,8 @@ $.runScript = {
 		}
 	
 		$.writeln('Sequence found: ' + sequence.name);
+		$.writeln('PNG file properties: ' + JSON.stringify(pngFile));
+
 		this.replaceFileInSequence(sequence, pngFile);
 	},
 
@@ -440,31 +436,31 @@ $.runScript = {
 	},	
 
 	replaceFileInSequence: function(sequence, pngFile) {
+		$.writeln('-----------------------------');
 		$.writeln('Clearing sequence before placing new file');
 
+		$.writeln('PNG file properties: ' + JSON.stringify(pngFile));
+	
 		if (!pngFile || typeof pngFile !== 'object') {
 			$.writeln('pngFile is undefined or not a valid object');
 			return;
 		}
-
+	
 		$.writeln('pngFile name: ' + pngFile.name);
-		if (pngFile.path) {
-			$.writeln('pngFile path: ' + pngFile.path);
-		}
-
+	
 		var videoTracks = sequence.videoTracks;
-
+	
 		if (videoTracks.numTracks < 2) {
 			$.writeln('Sequence does not have a second video track');
 			return;
 		}
-
-		var secondTrack = videoTracks[0];
+	
+		var secondTrack = videoTracks[1]; // Use the second video track
 		$.writeln('Processing second track: ' + secondTrack.name);
-
+	
 		if (secondTrack.clips.numItems > 0) {
 			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Removing them.');
-
+	
 			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
 				secondTrack.clips[i].remove(true, true);
 			}
@@ -472,29 +468,42 @@ $.runScript = {
 		} else {
 			$.writeln('Second track is empty.');
 		}
-
+	
 		try {
-			var startTime = 0;
-			$.writeln('Attempting to insert clip...');
+			var startTime = 0; // Start at the beginning of the sequence
+			var clipDuration = 4.96; // Example duration in seconds (adjust as needed)
+			var numberOfDuplicates = 25;
+
+			$.writeln('Attempting to insert clip and duplicate it...');
+
+			// Insert the first clip
 			var newClip = secondTrack.insertClip(pngFile, startTime);
 			$.writeln('Type of newClip is: ' + typeof(newClip));
 
-			if (newClip && typeof newClip === 'object') {
+			if (newClip === true && typeof newClip === 'boolean') {
 				$.writeln('New clip inserted into the second track: ' + secondTrack.name);
 
-				var duration = 127; // seconds
-				newClip.end.seconds = newClip.start.seconds + duration;
+				// Duplicate and place the clip
+				for (var j = 0; j < numberOfDuplicates; j++) {
+					// Calculate new start time for the duplicated clip
+					var newStartTime = startTime + j * clipDuration;
+					$.writeln('Inserting duplicate ' + (j + 1) + ' at ' + newStartTime + ' seconds.');
 
-				$.writeln('Clip duration set to 127 seconds. Clip ends at: ' + newClip.end.seconds);
+					// Insert the duplicate clip
+					secondTrack.insertClip(pngFile, newStartTime);
+				}
+
+				$.writeln('Successfully duplicated and placed ' + numberOfDuplicates + ' clips.');
+
 			} else {
 				$.writeln('Failed to insert new image into the second track.');
 			}
-
+	
 		} catch (e) {
 			$.writeln('Error inserting new image: ' + e.message);
 		}
 	},
-
+	
 
 	// Function to replace a screenshot in a specific sequence
 	replaceVideoInSequence: function(sequence, mp4File) {
