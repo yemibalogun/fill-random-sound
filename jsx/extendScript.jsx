@@ -552,12 +552,37 @@ $.runScript = {
 			var secondClip = firstTrack.insertClip(mp4File, secondClipTime);
 			$.writeln('Inserted second video clip at ' + secondClipTime + ' seconds.');
 			
-			// Remove the second video clip, leaving only one frame in the first track
-			if (firstTrack.clips.numItems > 1) {
+			// Remove all video and audio clips after the first one
+			$.writeln('Removing all video and audio clips after the first one...');
+			while (firstTrack.clips.numItems > 1) {
 				firstTrack.clips[1].remove(true, true);
-				$.writeln('Removed the second video clip, leaving only one frame.');
 			}
-
+	
+			while (firstAudio.clips.numItems > 1) {
+				firstAudio.clips[1].remove(true, true);
+			}
+			$.writeln('All extra video and audio clips removed.');
+	
+			$.writeln('Attempting to duplicate the remaining frame...');
+	
+			// Log details of the remaining clip before duplication
+			var remainingClip = firstTrack.clips[0];
+			$.writeln('Remaining clip: ' + remainingClip.name + ', Start Time: ' + remainingClip.start.seconds);
+	
+try {
+			var startTime = 0; // Start at 0 seconds
+			var frameDuration = 1/23.976; // One frame duration at 23.976 fps
+			var numberOfDuplicates = 10;
+	
+			// Insert the first video clip at the start time of 0 seconds
+			var firstClip = firstTrack.insertClip(mp4File, startTime);
+			$.writeln('Inserted first video clip at ' + startTime + ' seconds.');
+	
+			// Insert a second video clip one frame after the first clip
+			var secondClipTime = frameDuration;
+			var secondClip = firstTrack.insertClip(mp4File, secondClipTime);
+			$.writeln('Inserted second video clip at ' + secondClipTime + ' seconds.');
+			
 			// Remove all video and audio clips after the first one
 			$.writeln('Removing all video and audio clips after the first one...');
 			while (firstTrack.clips.numItems > 1) {
@@ -576,10 +601,31 @@ $.runScript = {
 			$.writeln('Remaining clip: ' + remainingClip.name + ', Start Time: ' + remainingClip.start.seconds);
 	
 			// Duplicate and place the single frame the specified number of times
-			for (var k = 1; j < numberOfDuplicates; k++) {
-				var newStartTime = startTime + k * frameDuration; // Corrected time calculation
+			for (var k = 1; k <= numberOfDuplicates; k++) {
+				var newStartTime = startTime + k * frameDuration; // Time calculation
+
+				// Insert the remianing clip ahain at the new start
 				firstTrack.insertClip(remainingClip.projectItem, newStartTime);
 			}
+
+			// After duplicating, remove any clips after the numberOfDuplicates
+			$.writeln('Checking for extra clips to remove...');
+
+			// Iterate through the clips and remove those beyond the numberOfDuplicates
+			while (firstTrack.clips.numItems > numberOfDuplicates) {
+				firstTrack.clips[numberOfDuplicates].remove(true, true);
+			}
+			
+			while (firstAudio.clips.numItems > numberOfDuplicates) {
+				firstAudio.clips[numberOfDuplicates].remove(true, true);
+			}
+			$.writeln('All extra video and audio clips removed.');
+			
+			$.writeln('Successfully duplicated and placed the frame ' + numberOfDuplicates + ' times.');
+	
+		} catch (e) {
+			$.writeln('Error inserting new video: ' + e.message);
+		}
 			$.writeln('Successfully duplicated and placed the frame ' + numberOfDuplicates + ' times.');
 	
 		} catch (e) {
@@ -662,7 +708,7 @@ $.runScript = {
 	},
 
 	replaceVideoInSequenceThirdTrack: function(sequence, mp4File) {
-		$.writeln('Starting replaceVideoInSequenceThirdTrack function');
+		$.writeln('Starting replaceVideoInSequenceSecondTrack function');
 		
 		var videoTracks = sequence.videoTracks;
 		var audioTracks = sequence.audioTracks;
@@ -701,10 +747,10 @@ $.runScript = {
 		// Insert the new video into the first track at 51.79 seconds and trim to 5.835 seconds
 		try {
 			var startTime = new Time();
-			startTime.seconds = 51.79;
+			startTime.seconds = 57.625;
 			
 			var newClipTime = new Time();
-			newClipTime.seconds = 57.625;
+			newClipTime.seconds = 59.625;
 	
 			// Insert video clip into the first track
 			var insertedVideoClip = firstTrack.insertClip(mp4File, startTime.seconds);
