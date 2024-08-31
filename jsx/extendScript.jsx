@@ -751,7 +751,7 @@ $.runScript = {
 
 			var sequence = sequence;
 			var outputPath = "C:\\Users\\OMEN 15 Pro\\Videos\\Exports\\" + folderName + ".mp4";
-			var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi2_preset.epr";
+			var outputPresetPath = "C:\\Users\\OMEN 15 Pro\\Documents\\Adobe\\Adobe Media Encoder\\23.0\\Presets\\yemi_full_res.epr";
 			app.encoder.launchEncoder();
 			$.writeln('Media Encoder launched.');
 
