@@ -189,7 +189,6 @@ $.runScript = {
 			var child = projectRoot.children[i];
 			if (child.type === ProjectItemType.BIN && child.name === "Main folder") {
 				mainFolder = child;
-				$.writeln('Main folder bin found: ' + mainFolder.type);
 				break;
 			}
 		}
@@ -204,48 +203,56 @@ $.runScript = {
 		this.importedFolders = [];
 	
 		// Retrieve the subfolders contained in "Main folder"
-		$.writeln('Number of children in Main folder: ' + mainFolder.children.numItems);
-
+		
 		for (var i = 0; i < mainFolder.children.numItems; i++) {
 			var subfolder = mainFolder.children[i];
-			$.writeln('Checking child item: ' + subfolder.name + ', Type: ' + subfolder.type);
-
+			
 			if (subfolder.type === ProjectItemType.BIN) {
-				$.writeln('Checking folder: ' + subfolder.name);
-
+				
 				this.importedFolders.push({
 					folderName: subfolder.name,
 					folderBin: subfolder
 				});
-				$.writeln('Added folder: ' + subfolder.name);
 			}
 		}
 	
 		// Check if this.importedFolders has items
 		if (this.importedFolders.length > 0) {
-			$.writeln('Number of imported folders: ' + this.importedFolders.length);
-	
 			// Iterate over each imported folder
 			for (var i = 0; i < this.importedFolders.length; i++) {
 				var importedFolder = this.importedFolders[i];
-	
+
+				// Retrieve first_frame.jpg and last_frame.jpg files from the folder bin
+				var firstFrameJPG = this.findFileInBin(importedFolder.folderBin, /first_frame\.jpg$/i);
+            	var lastFrameJPG = this.findFileInBin(importedFolder.folderBin, /last_frame\.jpg$/i);
+				
+				// Process first_frame.jpg
+				if (firstFrameJPG) {
+					this.processFirstFrame(firstFrameJPG);
+				} else {
+					$.writeln('first_frame.jpg not found in folder: ' + importedFolder.folderName);
+				}
+
+				// Process last_frame.jpg
+				if (lastFrameJPG) {
+					this.processLastFrame(lastFrameJPG);
+				} else {
+					$.writeln('last_frame.jpg not found in folder: ' + importedFolder.folderName);
+				}
+
 				// Retrieve MP4 and PNG files from the folder bin
-				$.writeln('Searching in bin: ' + importedFolder.folderName + ' for PNG files');
 				var pngFile = this.findFileInBin(importedFolder.folderBin, /\.png$/i);
 
 				if (pngFile) {
-					$.writeln('PNG file found: ' + pngFile.name);
 					this.processSequence(pngFile)
 				} else {
 					$.writeln('PNG file not found in folder: ' + importedFolder.folderName);
 				}
 
-				$.writeln('Searching in bin: ' + importedFolder.folderName + ' for MP4 files');
 				var mp4File = this.findFileInBin(importedFolder.folderBin, /\.mp4$/i);
 
 				// Log details about found files
 				if (mp4File) {
-					$.writeln('MP4 file found: ' + mp4File.name);
 					this.processVideo(mp4File);
 				} else {
 					$.writeln('MP4 file not found in folder: ' + importedFolder.folderName);
@@ -386,6 +393,31 @@ $.runScript = {
 		}
 	},
 	
+	processFirstFrame: function(firstFrameJPG) {
+		var sequenceName = "Add Facebook screenrecords";
+		var sequence = this.findSequenceByName(sequenceName);
+
+		if (!sequence) {
+			$.writeln('Sequence named "' + sequenceName + '" not found');
+			return;
+		}
+		$.writeln('Sequence found: ' + sequence.name);
+
+		this.replaceVideoInSequenceFirstTrack(sequence, firstFrameJPG);
+	},
+	
+	processLastFrame: function(lastFrameJPG) {
+		var sequenceName = "Add Facebook screenrecords";
+		var sequence = this.findSequenceByName(sequenceName);
+
+		if (!sequence) {
+			$.writeln('Sequence named "' + sequenceName + '" not found');
+			return;
+		}
+		$.writeln('Sequence found: ' + sequence.name);
+
+		this.replaceVideoInSequenceThirdTrack(sequence, lastFrameJPG);
+	},
 	
 	processSequence: function(pngFile) {
 		var sequenceName = "Add Screenshot Indeed";
@@ -411,9 +443,8 @@ $.runScript = {
 		}
 	
 		$.writeln('Sequence found: ' + sequence.name);
-		this.replaceVideoInSequenceFirstTrack(sequence, mp4File);
+		
 		this.replaceVideoInSequenceSecondTrack(sequence, mp4File);
-		this.replaceVideoInSequenceThirdTrack(sequence, mp4File);
 	},
 
 	// Utility function to find a file matching a regex in a bin
@@ -501,15 +532,13 @@ $.runScript = {
 		}
 	},
 	
-	replaceVideoInSequenceFirstTrack: function(sequence, mp4File) {
+	replaceVideoInSequenceFirstTrack: function(sequence, firstFrameJPG) {
 		$.writeln('Starting replaceVideoInSequenceFirstTrack function');
 	
 		var videoTracks = sequence.videoTracks;
-		var audioTracks = sequence.audioTracks;
 	
 		// Process only the first video and audio tracks
 		var firstTrack = videoTracks[0];
-		var firstAudio = audioTracks[0];
 		$.writeln('Processing first track: ' + firstTrack.name);
 	
 		// Check if there are any clips in the first track
@@ -521,120 +550,53 @@ $.runScript = {
 				firstTrack.clips[i].remove(true, true);
 			}
 	
-			for (var j = firstAudio.clips.numItems - 1; j >= 0; j--) {
-				firstAudio.clips[j].remove(true, true);
-			}
-	
 			$.writeln('All clips removed from ' + firstTrack.name);
 		} else {
-			$.writeln('First track is empty. Ready to add new video.');
+			$.writeln('First track is empty. Ready to add new clip.');
 		}
 	
-		$.writeln('Type of mp4 File: ' + typeof(mp4File));
+		$.writeln('Type of new File: ' + typeof(firstFrameJPG));
 	
-		// Ensure the new video was imported correctly before proceeding
-		if (!mp4File) {
-			$.writeln('Error: mp4File is null or undefined.');
+		// Ensure the new file was imported correctly before proceeding
+		if (!firstFrameJPG) {
+			$.writeln('Error: firstFrameJPG is null or undefined.');
 			return;
 		}
-	
+		
 		try {
-			var startTime = 0; // Start at 0 seconds
-			var frameDuration = 1/23.976; // One frame duration at 23.976 fps
+			var startTime = 0; // Start at the beginning of the sequence
+			var clipDuration = 4.96; // Example duration in seconds 4.96 (adjust as needed)
 			var numberOfDuplicates = 10;
-	
-			// Insert the first video clip at the start time of 0 seconds
-			var firstClip = firstTrack.insertClip(mp4File, startTime);
-			$.writeln('Inserted first video clip at ' + startTime + ' seconds.');
-	
-			// Insert a second video clip one frame after the first clip
-			var secondClipTime = frameDuration;
-			var secondClip = firstTrack.insertClip(mp4File, secondClipTime);
-			$.writeln('Inserted second video clip at ' + secondClipTime + ' seconds.');
-			
-			// Remove all video and audio clips after the first one
-			$.writeln('Removing all video and audio clips after the first one...');
-			while (firstTrack.clips.numItems > 1) {
-				firstTrack.clips[1].remove(true, true);
-			}
-	
-			while (firstAudio.clips.numItems > 1) {
-				firstAudio.clips[1].remove(true, true);
-			}
-			$.writeln('All extra video and audio clips removed.');
-	
-			$.writeln('Attempting to duplicate the remaining frame...');
-	
-			// Log details of the remaining clip before duplication
-			var remainingClip = firstTrack.clips[0];
-			$.writeln('Remaining clip: ' + remainingClip.name + ', Start Time: ' + remainingClip.start.seconds);
-	
-try {
-			var startTime = 0; // Start at 0 seconds
-			var frameDuration = 1/23.976; // One frame duration at 23.976 fps
-			var numberOfDuplicates = 10;
-	
-			// Insert the first video clip at the start time of 0 seconds
-			var firstClip = firstTrack.insertClip(mp4File, startTime);
-			$.writeln('Inserted first video clip at ' + startTime + ' seconds.');
-	
-			// Insert a second video clip one frame after the first clip
-			var secondClipTime = frameDuration;
-			var secondClip = firstTrack.insertClip(mp4File, secondClipTime);
-			$.writeln('Inserted second video clip at ' + secondClipTime + ' seconds.');
-			
-			// Remove all video and audio clips after the first one
-			$.writeln('Removing all video and audio clips after the first one...');
-			while (firstTrack.clips.numItems > 1) {
-				firstTrack.clips[1].remove(true, true);
-			}
-	
-			while (firstAudio.clips.numItems > 1) {
-				firstAudio.clips[1].remove(true, true);
-			}
-			$.writeln('All extra video and audio clips removed.');
-	
-			$.writeln('Attempting to duplicate the remaining frame...');
-	
-			// Log details of the remaining clip before duplication
-			var remainingClip = firstTrack.clips[0];
-			$.writeln('Remaining clip: ' + remainingClip.name + ', Start Time: ' + remainingClip.start.seconds);
-	
-			// Duplicate and place the single frame the specified number of times
-			for (var k = 1; k <= numberOfDuplicates; k++) {
-				var newStartTime = startTime + k * frameDuration; // Time calculation
 
-				// Insert the remianing clip ahain at the new start
-				firstTrack.insertClip(remainingClip.projectItem, newStartTime);
-			}
+			$.writeln('Attempting to insert clip and duplicate it...');
 
-			// After duplicating, remove any clips after the numberOfDuplicates
-			$.writeln('Checking for extra clips to remove...');
+			// Insert the first clip
+			var newClip = firstTrack.insertClip(firstFrameJPG, startTime);
+			$.writeln('Type of newClip is: ' + typeof(newClip));
 
-			// Iterate through the clips and remove those beyond the numberOfDuplicates
-			while (firstTrack.clips.numItems > numberOfDuplicates) {
-				firstTrack.clips[numberOfDuplicates].remove(true, true);
+			if (newClip === true && typeof newClip === 'boolean') {
+				$.writeln('New clip inserted into the first track: ' + firstTrack.name);
+
+				// Duplicate and place the clip
+				for (var j = 0; j < numberOfDuplicates; j++) {
+					// Calculate new start time for the duplicated clip
+					var newStartTime = startTime + j * clipDuration;
+					
+					// Insert the duplicate clip
+					firstTrack.insertClip(firstFrameJPG, newStartTime);
+				}
+
+				$.writeln('Successfully duplicated and placed ' + numberOfDuplicates + ' clips.');
+
+			} else {
+				$.writeln('Failed to insert new image into the first track.');
 			}
-			
-			while (firstAudio.clips.numItems > numberOfDuplicates) {
-				firstAudio.clips[numberOfDuplicates].remove(true, true);
-			}
-			$.writeln('All extra video and audio clips removed.');
-			
-			$.writeln('Successfully duplicated and placed the frame ' + numberOfDuplicates + ' times.');
 	
 		} catch (e) {
-			$.writeln('Error inserting new video: ' + e.message);
-		}
-			$.writeln('Successfully duplicated and placed the frame ' + numberOfDuplicates + ' times.');
-	
-		} catch (e) {
-			$.writeln('Error inserting new video: ' + e.message);
-		}
+			$.writeln('Error inserting new image: ' + e.message);
+		}			
 	},
 	
-	
-
 	replaceVideoInSequenceSecondTrack: function(sequence, mp4File) {
 		$.writeln('Starting replaceVideoInSequenceSecondTrack function');
 		
@@ -642,24 +604,24 @@ try {
 		var audioTracks = sequence.audioTracks;
 	
 		// Process only the first video and audio tracks
-		var firstTrack = videoTracks[1];
-		var firstAudio = audioTracks[1];
-		$.writeln('Processing first track: ' + firstTrack.name);
+		var secondTrack = videoTracks[1];
+		var secondAudio = audioTracks[1];
+		$.writeln('Processing first track: ' + secondTrack.name);
 	
 		// Check if there are any clips in the first track
-		if (firstTrack.clips.numItems > 0) {
-			$.writeln('Found ' + firstTrack.clips.numItems + ' videos in the first track. Removing all videos.');
+		if (secondTrack.clips.numItems > 0) {
+			$.writeln('Found ' + secondTrack.clips.numItems + ' videos in the first track. Removing all videos.');
 	
 			// Remove all clips from the first video and audio tracks
-			for (var i = firstTrack.clips.numItems - 1; i >= 0; i--) {
-				firstTrack.clips[i].remove(true, true);
+			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
+				secondTrack.clips[i].remove(true, true);
 			}
 	
-			for (var j = firstAudio.clips.numItems - 1; j >= 0; j--) {
-				firstAudio.clips[j].remove(true, true);
+			for (var j = secondAudio.clips.numItems - 1; j >= 0; j--) {
+				secondAudio.clips[j].remove(true, true);
 			}
 	
-			$.writeln('All clips removed from ' + firstTrack.name);
+			$.writeln('All clips removed from ' + secondTrack.name);
 		} else {
 			$.writeln('First track is empty. Ready to add new video.');
 		}
@@ -674,112 +636,90 @@ try {
 	
 		// Insert the new video into the first track at 51.79 seconds and trim to 5.835 seconds
 		try {
-			var startTime = new Time();
-			startTime.seconds = 51.79;
+			var startTime = 51.19; // Start at the beginning of the sequence
 			
-			var newClipTime = new Time();
-			newClipTime.seconds = 57.625;
+			$.writeln('Attempting to insert clip');
+
+			// Insert the first clip
+			var newClip = secondTrack.insertClip(mp4File, startTime);
+			$.writeln('Type of newClip is: ' + typeof(newClip));
+			$.writeln('mp4File inserted successfully.')
 	
-			// Insert video clip into the first track
-			var insertedVideoClip = firstTrack.insertClip(mp4File, startTime.seconds);
-			$.writeln('Inserted video clip: ' + insertedVideoClip);
-			$.writeln('This is the type of insertedVideoClip: ' + typeof(insertedVideoClip));
-
-			// Insert video clip into the first track
-			var newVideoClip = firstTrack.insertClip(mp4File, newClipTime.seconds);
-			$.writeln('Inserted video clip: ' + newVideoClip);
-	
-			// Remove the second video clip after creating it 
-			for (var k = firstTrack.clips.numItems - 1; k> 0; k--) {
-				firstTrack.clips[k].remove(true, true);
-			}
-			$.writeln('Removed all clips after the first one.');
-
-			// Remove all audio clips after the first one
-			for (var l = firstAudio.clips.numItems - 1; l > 0; l--) {
-				firstAudio.clips[l].remove(true, true);
-			}
-			$.writeln('Removed all audio clips after the first one.');
-
 		} catch (e) {
-			$.writeln('Error inserting new video: ' + e.message);
-		}
+			$.writeln('Error inserting new image: ' + e.message);
+		}	
 
 	},
 
-	replaceVideoInSequenceThirdTrack: function(sequence, mp4File) {
-		$.writeln('Starting replaceVideoInSequenceSecondTrack function');
+	replaceVideoInSequenceThirdTrack: function(sequence, lastFrameJPG) {
+		$.writeln('Starting replaceVideoInSequenceThirdTrack function');
 		
 		var videoTracks = sequence.videoTracks;
-		var audioTracks = sequence.audioTracks;
-	
-		// Process only the first video and audio tracks
-		var firstTrack = videoTracks[2];
-		var firstAudio = audioTracks[2];
-		$.writeln('Processing first track: ' + firstTrack.name);
-	
-		// Check if there are any clips in the first track
-		if (firstTrack.clips.numItems > 0) {
-			$.writeln('Found ' + firstTrack.clips.numItems + ' videos in the first track. Removing all videos.');
-	
-			// Remove all clips from the first video and audio tracks
-			for (var i = firstTrack.clips.numItems - 1; i >= 0; i--) {
-				firstTrack.clips[i].remove(true, true);
+		
+		var thirdTrack = videoTracks[2]; // Accessing the third video track
+		$.writeln('Processing third track: ' + thirdTrack.name);
+		
+		// Remove all clips from the third video track
+		if (thirdTrack.clips.numItems > 0) {
+			$.writeln('Found ' + thirdTrack.clips.numItems + ' videos in the third track. Removing all videos.');
+			
+			for (var i = thirdTrack.clips.numItems - 1; i >= 0; i--) {
+				thirdTrack.clips[i].remove(true, true);
 			}
-	
-			for (var j = firstAudio.clips.numItems - 1; j >= 0; j--) {
-				firstAudio.clips[j].remove(true, true);
-			}
-	
-			$.writeln('All clips removed from ' + firstTrack.name);
+			
+			$.writeln('All clips removed from ' + thirdTrack.name);
 		} else {
-			$.writeln('First track is empty. Ready to add new video.');
+			$.writeln('Third track is empty. Ready to add new video.');
 		}
-
-		$.writeln('Type of mp4 File: ' + typeof(mp4File));
 	
-		// Ensure the new video was imported correctly before proceeding
-		if (!mp4File) {
-			$.writeln('Error: mp4File is null or undefined.');
+		// Check the type and validity of lastFrameJPG
+		$.writeln('Type of lastFrameJPG: ' + typeof(lastFrameJPG));
+		
+		if (!lastFrameJPG) {
+			$.writeln('Error: lastFrameJPG is null or undefined.');
 			return;
 		}
-	
-		// Insert the new video into the first track at 51.79 seconds and trim to 5.835 seconds
+		
+		// Insert the new image into the third track at 57.233 seconds and trim to 4.96 seconds
 		try {
 			var startTime = new Time();
-			startTime.seconds = 57.625;
+			startTime.seconds = 57.01;
 			
-			var newClipTime = new Time();
-			newClipTime.seconds = 59.625;
+			var clipDuration = 4.96; // Duration in seconds
+			var numberOfDuplicates = 4;
 	
-			// Insert video clip into the first track
-			var insertedVideoClip = firstTrack.insertClip(mp4File, startTime.seconds);
-			$.writeln('Inserted video clip: ' + insertedVideoClip);
-			$.writeln('This is the type of insertedVideoClip: ' + typeof(insertedVideoClip));
-
-			// Insert video clip into the first track
-			var newVideoClip = firstTrack.insertClip(mp4File, newClipTime.seconds);
-			$.writeln('Inserted video clip: ' + newVideoClip);
+			$.writeln('Attempting to insert clip and duplicate it...');
 	
-			// Remove the second video clip after creating it 
-			for (var k = firstTrack.clips.numItems - 1; k> 0; k--) {
-				firstTrack.clips[k].remove(true, true);
+			// Insert the first clip
+			var newClip = thirdTrack.insertClip(lastFrameJPG, startTime);
+			$.writeln('Type of newClip is: ' + typeof(newClip));
+	
+			if (newClip !== null) {
+				$.writeln('New clip inserted into the third track: ' + thirdTrack.name);
+	
+				// Duplicate and place the clip
+				for (var j = 1; j < numberOfDuplicates; j++) {
+					// Calculate new start time for the duplicated clip
+					var newStartTime = startTime.seconds + j * clipDuration;
+					
+					var newTime = new Time();
+					newTime.seconds = newStartTime;
+	
+					// Insert the duplicate clip
+					thirdTrack.insertClip(lastFrameJPG, newTime);
+				}
+	
+				$.writeln('Successfully duplicated and placed ' + numberOfDuplicates + ' clips.');
+	
+			} else {
+				$.writeln('Failed to insert new image into the third track.');
 			}
-			$.writeln('Removed all clips after the first one.');
-
-			// Remove all audio clips after the first one
-			for (var l = firstAudio.clips.numItems - 1; l > 0; l--) {
-				firstAudio.clips[l].remove(true, true);
-			}
-			$.writeln('Removed all audio clips after the first one.');
-
+	
 		} catch (e) {
-			$.writeln('Error inserting new video: ' + e.message);
+			$.writeln('Error inserting new image: ' + e.message);
 		}
-
 	},
-
-
+	
     findSequenceByName: function(name) {
         for (var i = 0; i < app.project.sequences.numSequences; i++) {
             if (app.project.sequences[i].name === name) {
