@@ -156,7 +156,7 @@ $.runScript = {
 				$.writeln('Found file: ' + subFolderFile.name);
 	
 				// Import files into the bin
-				if (subFolderFile.name.match(/\.mp4$/i)) {
+				if (subFolderFile.name.match(/\.(mp4|mov)$/i)) {
 					mp4File = subFolderFile;
 				} else if (subFolderFile.name.match(/\.png$/i)) {
 					pngFile = subFolderFile;
@@ -249,7 +249,7 @@ $.runScript = {
 					$.writeln('PNG file not found in folder: ' + importedFolder.folderName);
 				}
 
-				var mp4File = this.findFileInBin(importedFolder.folderBin, /\.mp4$/i);
+				var mp4File = this.findFileInBin(importedFolder.folderBin, /\.(mp4|mov)$/i);
 
 				// Log details about found files
 				if (mp4File) {
