@@ -84,16 +84,16 @@ Updates the event panel with a message.
 ## Code Organization 
 The code is organized into several sections, each with its own set of functions that perform specific tasks. The sections are:
 
-Utility functions
-Folder management functions
-File import and processing functions
-Sequence processing functions
-Graphic layer processing functions
-MoGRT import function
-Video processing functions
-Bin management functions
-Sequence export function
-Event panel update function
+•	Utility functions
+•	Folder management functions
+•	File import and processing functions
+•	Sequence processing functions
+•	Graphic layer processing functions
+•	MoGRT import function
+•	Video processing functions
+•	Bin management functions
+•	Sequence export function
+•	Event panel update function
 
 ## Code Style
 The code follows a consistent style throughout, with each function having a clear and descriptive name. The code is well-commented, with comments explaining the purpose of each function and its parameters. The code also uses whitespace effectively to make it easy to read.
