@@ -81,7 +81,8 @@ Renders the active sequence.
 ### updateEventPanel
 Updates the event panel with a message.
 
-Code Organization The code is organized into several sections, each with its own set of functions that perform specific tasks. The sections are:
+## Code Organization 
+The code is organized into several sections, each with its own set of functions that perform specific tasks. The sections are:
 
 Utility functions
 Folder management functions
