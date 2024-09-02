@@ -138,6 +138,7 @@ $.runScript = {
 			if (file instanceof Folder) {
 				// Replace %20 with spaces in the folder name
 				var folderName = file.name.replace(/%20/g, ' ');
+				
 				$.writeln('Found subfolder: ' + folderName);
 				var subFolderBin = parentItem.createBin(folderName);
 				this.importFilesInSubFolder(file.fsName, subFolderBin, importedFolders);
