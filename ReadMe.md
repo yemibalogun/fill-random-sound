@@ -1,3 +1,23 @@
+# SETTING UP PREMIERE PRO PANEL
+
+1.	Extract the Process-Premiere folder.
+2.	Enable loading of unsigned panels. 
+On MacOS, type the following into Terminal, then relaunch Finder (either via rebooting, or from the Force Quit dialog):
+defaults write /Users/<username>/Library/Preferences/com.adobe.CSXS.11.plist PlayerDebugMode 1
+
+
+On Windows, make the following registry entry (a new Key, of type String):
+ 
+
+3. Put panel into extensions directory
+Put extracted Premiere-Process folder here, to have Premiere Pro load it:
+Windows:    C:\Program Files (x86)\Common Files\Adobe\CEP\extensions
+
+Mac:        /Library/Application Support/Adobe/CEP/extensions
+Note: That's the root /Library, not a specific user's ~/Library...
+
+Open Adobe Premiere Pro application, click Window and navigate to Extensions. Your panel should now be loaded there.
+
 # Overview 
 The code is a JavaScript script that provides a set of utility functions for automating tasks in Adobe Premiere Pro. The script is organized into several sections, each with its own set of functions that perform specific tasks.
 
