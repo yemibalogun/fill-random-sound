@@ -8,6 +8,7 @@ defaults write /Users/<username>/Library/Preferences/com.adobe.CSXS.11.plist Pla
 
 
 On Windows, make the following registry entry (a new Key, of type String):
+
  ![image](https://github.com/user-attachments/assets/6cc0da77-077b-417e-9e6b-f1c3bead92fe)
 
 
