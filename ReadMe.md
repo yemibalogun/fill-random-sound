@@ -3,6 +3,7 @@
 ### 1.	Extract the Process-Premiere folder.
 ### 2.	Enable loading of unsigned panels. 
 On MacOS, type the following into Terminal, then relaunch Finder (either via rebooting, or from the Force Quit dialog):
+
 defaults write /Users/<username>/Library/Preferences/com.adobe.CSXS.11.plist PlayerDebugMode 1
 
 
