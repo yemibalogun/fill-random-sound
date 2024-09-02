@@ -13,9 +13,11 @@ On Windows, make the following registry entry (a new Key, of type String):
 
 ### 3. Put panel into extensions directory
 Put extracted Premiere-Process folder here, to have Premiere Pro load it:
-Windows:    C:\Program Files (x86)\Common Files\Adobe\CEP\extensions
+#### Windows:    
+C:\Program Files (x86)\Common Files\Adobe\CEP\extensions
 
-Mac:        /Library/Application Support/Adobe/CEP/extensions
+#### Mac:        
+/Library/Application Support/Adobe/CEP/extensions
 Note: That's the root /Library, not a specific user's ~/Library...
 
 Open Adobe Premiere Pro application, click Window and navigate to Extensions. Your panel should now be loaded there.
