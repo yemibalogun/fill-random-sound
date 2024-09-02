@@ -21,6 +21,7 @@ C:\Program Files (x86)\Common Files\Adobe\CEP\extensions
 /Library/Application Support/Adobe/CEP/extensions
 Note: That's the root /Library, not a specific user's ~/Library...
 
+
 Open Adobe Premiere Pro application, click Window and navigate to Extensions. Your panel should now be loaded there.
 
 # Overview 
