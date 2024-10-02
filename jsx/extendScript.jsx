@@ -40,7 +40,7 @@ $.runScript = {
 					app.project.importFiles(importThese, suppressWarnings, app.project.getInsertionBin(), importAsStills);
 				}
 			} else {
-				$.runScript.updateEventPanel("No files to import.");
+				this.updateEventPanel("No files to import.");
 			}
 		}
 	},
@@ -221,49 +221,53 @@ $.runScript = {
 	
 		// Check if this.importedFolders has items
 		if (this.importedFolders.length > 0) {
+
+			var fileTypes = [
+				{prefix: 'FB-', sequence: 'Add Facebookpage', firstFrameTime: 0, lastFrameTime: 65.006, videoTime: 60.003},
+				{prefix: 'INSTA-', sequence: 'Add Insta page', firstFrameTime: 0, lastFrameTime: 10.016, videoTime: 5.023},
+				{prefix: 'COMP-', sequence: 'add competitor', firstFrameTime: 0, lastFrameTime: 12.003, videoTime: 8.01}
+			]
+
 			// Iterate over each imported folder
 			for (var i = 0; i < this.importedFolders.length; i++) {
 				var importedFolder = this.importedFolders[i];
 
-				// Retrieve first_frame.jpg and last_frame.jpg files from the folder bin
-				var firstFrameJPG = this.findFileInBin(importedFolder.folderBin, /first_frame\.jpg$/i);
-            	var lastFrameJPG = this.findFileInBin(importedFolder.folderBin, /last_frame\.jpg$/i);
-				
-				// Process first_frame.jpg
-				if (firstFrameJPG) {
-					this.processFirstFrame(firstFrameJPG);
-				} else {
-					$.writeln('first_frame.jpg not found in folder: ' + importedFolder.folderName);
-				}
+				// Loop through each file type to process first/last frame and mp4
+				for (var j = 0; j < fileTypes.length; j++) {
+					var fileType = fileTypes[j];
 
-				// Process last_frame.jpg
-				if (lastFrameJPG) {
-					this.processLastFrame(lastFrameJPG);
-				} else {
-					$.writeln('last_frame.jpg not found in folder: ' + importedFolder.folderName);
-				}
+					// Retrieve first_frame.jpg file from the folder bin
+					var firstFrameJPG = this.findFileInBin(importedFolder.folderBin, new RegExp('^' + fileType.prefix + '.*_first_frame\\.jpg$', 'i'));
+					// Retrieve mp4 file from the folder bin
+					var mp4File = this.findFileInBin(importedFolder.folderBin, new RegExp('^' + fileType.prefix + '.*\\.(mp4|mov)$', 'i'));
+					// Retrive last_frame.jpg file from the folder bin
+					var lastFrameJPG = this.findFileInBin(importedFolder.folderBin, new RegExp('^' + fileType.prefix + '.*_last_frame\\.jpg$', 'i'));
 
-				// Retrieve MP4 and PNG files from the folder bin
-				var pngFile = this.findFileInBin(importedFolder.folderBin, /\.png$/i);
+					// Process first_frame.jpg
+					if (firstFrameJPG) {
+						this.processFirstFrame(firstFrameJPG, fileType.sequence, fileType.firstFrameTime);
+					} else {
+						$.writeln(fileType.prefix + ' first_frame.jpg not found in folder: ' + importedFolder.folderName);
+					}
 
-				if (pngFile) {
-					this.processSequence(pngFile)
-				} else {
-					$.writeln('PNG file not found in folder: ' + importedFolder.folderName);
-				}
+					// Log details about found files
+					if (mp4File) {
+						this.processVideo(mp4File, fileType.sequence, fileType.videoTime);
+					} else {
+						$.writeln(fileType.prefix + ' MP4 file not found in folder: ' + importedFolder.folderName);
+					}
 
-				var mp4File = this.findFileInBin(importedFolder.folderBin, /\.(mp4|mov)$/i);
-
-				// Log details about found files
-				if (mp4File) {
-					this.processVideo(mp4File);
-				} else {
-					$.writeln('MP4 file not found in folder: ' + importedFolder.folderName);
-				}
+					// Process last_frame.jpg
+					if (lastFrameJPG) {
+						this.processLastFrame(lastFrameJPG, fileType.sequence, fileType.lastFrameTime);
+					} else {
+						$.writeln(fileType.prefix + ' last_frame.jpg not found in folder: ' + importedFolder.folderName);
+					}
+				}	
 
 				var mogrtFilePath = "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2023\\Essential Graphics\\company_name_mogrt.mogrt";
 
-				// Replace text graphics layer in the sequence named "Add Name Company" with the folder name
+				// Replace text graphics layer in the sequence named "Insert title" with the folder name
 				this.updateTextInGraphic(importedFolder.folderName, mogrtFilePath);
 
 				// Save sequence to "Ready for Export" bin
@@ -281,7 +285,7 @@ $.runScript = {
 	updateTextInGraphic: function(folderName, mogrtFilePath) {
 		$.writeln('Updating text in graphic layer...');
 	
-		var sequenceName = "Add Name Company";
+		var sequenceName = "Insert title";
 		var sequence = this.findSequenceByName(sequenceName);
 	
 		if (!sequence) {
@@ -291,7 +295,7 @@ $.runScript = {
 	
 		$.writeln('Sequence found: ' + sequence.sequenceID);
 	
-		var trackIndex = 1; // Assuming text is on the second track
+		var trackIndex = 2; // Assuming text is on the second track
 		var track = sequence.videoTracks[trackIndex];
 	
 		if (!track) {
@@ -368,7 +372,6 @@ $.runScript = {
 		}
 	},
 	
-	
 	importMoGRT: function(mogrtFilePath) {
 		var activeSeq = app.project.activeSequence;
 		if (activeSeq) {
@@ -396,8 +399,7 @@ $.runScript = {
 		}
 	},
 	
-	processFirstFrame: function(firstFrameJPG) {
-		var sequenceName = "Add Facebook screenrecords";
+	processFirstFrame: function(firstFrameJPG, sequenceName, startTime) {
 		var sequence = this.findSequenceByName(sequenceName);
 
 		if (!sequence) {
@@ -406,11 +408,10 @@ $.runScript = {
 		}
 		$.writeln('Sequence found: ' + sequence.name);
 
-		this.replaceVideoInSequenceFirstTrack(sequence, firstFrameJPG);
+		this.replaceVideoInSequenceFirstTrack(sequence, firstFrameJPG, startTime);
 	},
 	
-	processLastFrame: function(lastFrameJPG) {
-		var sequenceName = "Add Facebook screenrecords";
+	processLastFrame: function(lastFrameJPG, sequenceName, startTime) {
 		var sequence = this.findSequenceByName(sequenceName);
 
 		if (!sequence) {
@@ -419,25 +420,10 @@ $.runScript = {
 		}
 		$.writeln('Sequence found: ' + sequence.name);
 
-		this.replaceVideoInSequenceThirdTrack(sequence, lastFrameJPG);
-	},
-	
-	processSequence: function(pngFile) {
-		var sequenceName = "Add Screenshot Indeed";
-		var sequence = this.findSequenceByName(sequenceName);
-	
-		if (!sequence) {
-			$.writeln('Sequence named "' + sequenceName + '" not found');
-			return;
-		}
-	
-		$.writeln('Sequence found: ' + sequence.name);
-
-		this.replaceFileInSequence(sequence, pngFile);
+		this.replaceVideoInSequenceThirdTrack(sequence, lastFrameJPG, startTime);
 	},
 
-	processVideo: function(mp4File) {
-		var sequenceName = "Add Facebook screenrecords";
+	processVideo: function(mp4File, sequenceName, startTime) {
 		var sequence = this.findSequenceByName(sequenceName);
 	
 		if (!sequence) {
@@ -447,7 +433,7 @@ $.runScript = {
 	
 		$.writeln('Sequence found: ' + sequence.name);
 		
-		this.replaceVideoInSequenceSecondTrack(sequence, mp4File);
+		this.replaceVideoInSequenceSecondTrack(sequence, mp4File, startTime);
 	},
 
 	// Utility function to find a file matching a regex in a bin
@@ -468,74 +454,8 @@ $.runScript = {
 		$.writeln('No matching file found in bin: ' + bin.name);
 		return null;
 	},	
-
-	replaceFileInSequence: function(sequence, pngFile) {
-		$.writeln('-----------------------------');
-		$.writeln('Clearing sequence before placing new file');
 	
-		if (!pngFile || typeof pngFile !== 'object') {
-			$.writeln('pngFile is undefined or not a valid object');
-			return;
-		}
-	
-		$.writeln('pngFile name: ' + pngFile.name);
-	
-		var videoTracks = sequence.videoTracks;
-	
-		if (videoTracks.numTracks < 2) {
-			$.writeln('Sequence does not have a second video track');
-			return;
-		}
-	
-		var secondTrack = videoTracks[1]; // Use the second video track
-		$.writeln('Processing second track: ' + secondTrack.name);
-	
-		if (secondTrack.clips.numItems > 0) {
-			$.writeln('Found ' + secondTrack.clips.numItems + ' clips in the second track. Removing them.');
-	
-			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
-				secondTrack.clips[i].remove(true, true);
-			}
-			$.writeln('All clips removed from ' + secondTrack.name);
-		} else {
-			$.writeln('Second track is empty.');
-		}
-	
-		try {
-			var startTime = 0; // Start at the beginning of the sequence
-			var clipDuration = 4.96; // Example duration in seconds (adjust as needed)
-			var numberOfDuplicates = 25;
-
-			$.writeln('Attempting to insert clip and duplicate it...');
-
-			// Insert the first clip
-			var newClip = secondTrack.insertClip(pngFile, startTime);
-			$.writeln('Type of newClip is: ' + typeof(newClip));
-
-			if (newClip === true && typeof newClip === 'boolean') {
-				$.writeln('New clip inserted into the second track: ' + secondTrack.name);
-
-				// Duplicate and place the clip
-				for (var j = 0; j < numberOfDuplicates; j++) {
-					// Calculate new start time for the duplicated clip
-					var newStartTime = startTime + j * clipDuration;
-					
-					// Insert the duplicate clip
-					secondTrack.insertClip(pngFile, newStartTime);
-				}
-
-				$.writeln('Successfully duplicated and placed ' + numberOfDuplicates + ' clips.');
-
-			} else {
-				$.writeln('Failed to insert new image into the second track.');
-			}
-	
-		} catch (e) {
-			$.writeln('Error inserting new image: ' + e.message);
-		}
-	},
-	
-	replaceVideoInSequenceFirstTrack: function(sequence, firstFrameJPG) {
+	replaceVideoInSequenceFirstTrack: function(sequence, firstFrameJPG, startTime) {
 		$.writeln('Starting replaceVideoInSequenceFirstTrack function');
 	
 		var videoTracks = sequence.videoTracks;
@@ -567,9 +487,8 @@ $.runScript = {
 		}
 		
 		try {
-			var startTime = 0; // Start at the beginning of the sequence
 			var clipDuration = 4.96; // Example duration in seconds 4.96 (adjust as needed)
-			var numberOfDuplicates = 10;
+			var numberOfDuplicates = 11;
 
 			$.writeln('Attempting to insert clip and duplicate it...');
 
@@ -600,7 +519,7 @@ $.runScript = {
 		}			
 	},
 	
-	replaceVideoInSequenceSecondTrack: function(sequence, mp4File) {
+	replaceVideoInSequenceSecondTrack: function(sequence, mp4File, startTime) {
 		$.writeln('Starting replaceVideoInSequenceSecondTrack function');
 		
 		var videoTracks = sequence.videoTracks;
@@ -609,24 +528,24 @@ $.runScript = {
 		// Process only the first video and audio tracks
 		var secondTrack = videoTracks[1];
 		var secondAudio = audioTracks[1];
-		$.writeln('Processing first track: ' + secondTrack.name);
+		$.writeln('Processing second track: ' + secondTrack.name);
 	
 		// Check if there are any clips in the first track
 		if (secondTrack.clips.numItems > 0) {
-			$.writeln('Found ' + secondTrack.clips.numItems + ' videos in the first track. Removing all videos.');
+			$.writeln('Found ' + secondTrack.clips.numItems + ' videos in the second track. Removing all videos.');
 	
-			// Remove all clips from the first video and audio tracks
+			// Remove all clips from the second video and audio tracks
 			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
 				secondTrack.clips[i].remove(true, true);
 			}
 	
-			for (var j = secondAudio.clips.numItems - 1; j >= 0; j--) {
-				secondAudio.clips[j].remove(true, true);
-			}
+			// for (var j = secondAudio.clips.numItems - 1; j >= 0; j--) {
+			// 	secondAudio.clips[j].remove(true, true);
+			// }
 	
 			$.writeln('All clips removed from ' + secondTrack.name);
 		} else {
-			$.writeln('First track is empty. Ready to add new video.');
+			$.writeln('Second track is empty. Ready to add new video.');
 		}
 
 		$.writeln('Type of mp4 File: ' + typeof(mp4File));
@@ -639,7 +558,7 @@ $.runScript = {
 	
 		// Insert the new video into the first track at 51.79 seconds and trim to 5.835 seconds
 		try {
-			var startTime = 51.19; // Start at the beginning of the sequence
+			// var startTime = 51.19; // Start at the beginning of the sequence
 			
 			$.writeln('Attempting to insert clip');
 
@@ -654,7 +573,7 @@ $.runScript = {
 
 	},
 
-	replaceVideoInSequenceThirdTrack: function(sequence, lastFrameJPG) {
+	replaceVideoInSequenceThirdTrack: function(sequence, lastFrameJPG, startTime) {
 		$.writeln('Starting replaceVideoInSequenceThirdTrack function');
 		
 		var videoTracks = sequence.videoTracks;
@@ -685,8 +604,6 @@ $.runScript = {
 		
 		// Insert the new image into the third track at 57.233 seconds and trim to 4.96 seconds
 		try {
-			var startTime = new Time();
-			startTime.seconds = 57.01;
 			
 			var clipDuration = 4.96; // Duration in seconds
 			var numberOfDuplicates = 4;
@@ -739,7 +656,7 @@ $.runScript = {
 		app.project.save();
 		$.writeln('Project saved.');
 	
-		var sequenceName = "BrandPeak - Social Vacature - Variant 1";
+		var sequenceName = "Brandpeak- template- Meta-Ecom-with competitor-v1";
 		var sequence = this.findSequenceByName(sequenceName);
 	
 		if (!sequence) {
@@ -782,11 +699,6 @@ $.runScript = {
 		if (!globalBind) {
 			$.writeln('Error: Bin "' + targetBinName + '" not found.');
 		}
-	},
-
-	// Helper function to render the active sequence
-	renderActiveSeq: function(outputPath, outputPresetPath) {
-		app.encoder.encodeSequence(app.project.activeSequence, outputPath, outputPresetPath, 2, 0);
 	},
 
 	updateEventPanel : function (message) {

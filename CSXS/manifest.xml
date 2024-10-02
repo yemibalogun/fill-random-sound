@@ -34,8 +34,8 @@
 					<Menu>BrandPeak Panel1</Menu>
 					<Geometry>
 						<Size>
-							<Height>300</Height>
-							<Width>300</Width>
+							<Height>250</Height>
+							<Width>250</Width>
 						</Size>
 					</Geometry>
 				</UI>
