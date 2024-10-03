@@ -539,9 +539,9 @@ $.runScript = {
 				secondTrack.clips[i].remove(true, true);
 			}
 	
-			// for (var j = secondAudio.clips.numItems - 1; j >= 0; j--) {
-			// 	secondAudio.clips[j].remove(true, true);
-			// }
+			for (var j = secondAudio.clips.numItems - 1; j >= 0; j--) {
+				secondAudio.clips[j].remove(true, true);
+			}
 	
 			$.writeln('All clips removed from ' + secondTrack.name);
 		} else {
@@ -616,17 +616,26 @@ $.runScript = {
 	
 			if (newClip !== null) {
 				$.writeln('New clip inserted into the third track: ' + thirdTrack.name);
-	
+				
+				// Loop to duplicate and place the clip after the first one
+				var lastClipEndTime = startTime.seconds + clipDuration;
+					
 				// Duplicate and place the clip
 				for (var j = 1; j < numberOfDuplicates; j++) {
-					// Calculate new start time for the duplicated clip
-					var newStartTime = startTime.seconds + j * clipDuration;
 					
 					var newTime = new Time();
-					newTime.seconds = newStartTime;
-	
-					// Insert the duplicate clip
-					thirdTrack.insertClip(lastFrameJPG, newTime);
+					newTime.seconds = lastClipEndTime; // Set new clip start time at the end of the previous clip
+					
+					// Insert the duplicate clip at the correct time
+					var duplicateClip = thirdTrack.insertClip(lastFrameJPG, newTime);
+
+					if (duplicateClip !== null) {
+						// Update lastClipEndTime to reflect the new clip's end time
+						lastClipEndTime += clipDuration;
+						$.writeln('Inserted duplicate clip ' + j + ' at time ' + newTime.seconds + ' seconds');
+					} else {
+						$.writeln('Failed to insert duplicate clip ' + j);
+					}
 				}
 	
 				$.writeln('Successfully duplicated and placed ' + numberOfDuplicates + ' clips.');
