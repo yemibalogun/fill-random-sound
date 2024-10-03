@@ -223,9 +223,9 @@ $.runScript = {
 		if (this.importedFolders.length > 0) {
 
 			var fileTypes = [
-				{prefix: 'FB-', sequence: 'Add Facebookpage', firstFrameTime: 0, lastFrameTime: 65.006, videoTime: 60.003},
-				{prefix: 'INSTA-', sequence: 'Add Insta page', firstFrameTime: 0, lastFrameTime: 10.016, videoTime: 5.023},
-				{prefix: 'COMP-', sequence: 'add competitor', firstFrameTime: 0, lastFrameTime: 12.003, videoTime: 8.01}
+				{prefix: 'FB-', sequence: 'Add Facebookpage', firstFrameTime: 0, lastFrameTime: 65.006, videoTime: 60.003, noOfDuplicates: 12},
+				{prefix: 'INSTA-', sequence: 'Add Insta page', firstFrameTime: 0, lastFrameTime: 10.016, videoTime: 5.023, noOfDuplicates: 1},
+				{prefix: 'COMP-', sequence: 'add competitor', firstFrameTime: 0, lastFrameTime: 12.003, videoTime: 8.01, noOfDuplicates: 1}
 			]
 
 			// Iterate over each imported folder
@@ -245,7 +245,7 @@ $.runScript = {
 
 					// Process first_frame.jpg
 					if (firstFrameJPG) {
-						this.processFirstFrame(firstFrameJPG, fileType.sequence, fileType.firstFrameTime);
+						this.processFirstFrame(firstFrameJPG, fileType.sequence, fileType.firstFrameTime, fileType.noOfDuplicates);
 					} else {
 						$.writeln(fileType.prefix + ' first_frame.jpg not found in folder: ' + importedFolder.folderName);
 					}
@@ -259,7 +259,7 @@ $.runScript = {
 
 					// Process last_frame.jpg
 					if (lastFrameJPG) {
-						this.processLastFrame(lastFrameJPG, fileType.sequence, fileType.lastFrameTime);
+						this.processLastFrame(lastFrameJPG, fileType.sequence, fileType.lastFrameTime, fileType.noOfDuplicates);
 					} else {
 						$.writeln(fileType.prefix + ' last_frame.jpg not found in folder: ' + importedFolder.folderName);
 					}
@@ -399,7 +399,7 @@ $.runScript = {
 		}
 	},
 	
-	processFirstFrame: function(firstFrameJPG, sequenceName, startTime) {
+	processFirstFrame: function(firstFrameJPG, sequenceName, startTime, noOfDuplicates) {
 		var sequence = this.findSequenceByName(sequenceName);
 
 		if (!sequence) {
@@ -408,10 +408,10 @@ $.runScript = {
 		}
 		$.writeln('Sequence found: ' + sequence.name);
 
-		this.replaceVideoInSequenceFirstTrack(sequence, firstFrameJPG, startTime);
+		this.replaceVideoInSequenceFirstTrack(sequence, firstFrameJPG, startTime, noOfDuplicates);
 	},
 	
-	processLastFrame: function(lastFrameJPG, sequenceName, startTime) {
+	processLastFrame: function(lastFrameJPG, sequenceName, startTime, noOfDuplicates) {
 		var sequence = this.findSequenceByName(sequenceName);
 
 		if (!sequence) {
@@ -420,7 +420,7 @@ $.runScript = {
 		}
 		$.writeln('Sequence found: ' + sequence.name);
 
-		this.replaceVideoInSequenceThirdTrack(sequence, lastFrameJPG, startTime);
+		this.replaceVideoInSequenceThirdTrack(sequence, lastFrameJPG, startTime, noOfDuplicates);
 	},
 
 	processVideo: function(mp4File, sequenceName, startTime) {
@@ -455,7 +455,7 @@ $.runScript = {
 		return null;
 	},	
 	
-	replaceVideoInSequenceFirstTrack: function(sequence, firstFrameJPG, startTime) {
+	replaceVideoInSequenceFirstTrack: function(sequence, firstFrameJPG, startTime, noOfDuplicates) {
 		$.writeln('Starting replaceVideoInSequenceFirstTrack function');
 	
 		var videoTracks = sequence.videoTracks;
@@ -488,7 +488,7 @@ $.runScript = {
 		
 		try {
 			var clipDuration = 4.96; // Example duration in seconds 4.96 (adjust as needed)
-			var numberOfDuplicates = 11;
+			var numberOfDuplicates = noOfDuplicates;
 
 			$.writeln('Attempting to insert clip and duplicate it...');
 
@@ -573,7 +573,7 @@ $.runScript = {
 
 	},
 
-	replaceVideoInSequenceThirdTrack: function(sequence, lastFrameJPG, startTime) {
+	replaceVideoInSequenceThirdTrack: function(sequence, lastFrameJPG, startTime, noOfDuplicates) {
 		$.writeln('Starting replaceVideoInSequenceThirdTrack function');
 		
 		var videoTracks = sequence.videoTracks;
@@ -604,9 +604,8 @@ $.runScript = {
 		
 		// Insert the new image into the third track at 57.233 seconds and trim to 4.96 seconds
 		try {
-			
 			var clipDuration = 4.96; // Duration in seconds
-			var numberOfDuplicates = 4;
+			var numberOfDuplicates = noOfDuplicates;
 	
 			$.writeln('Attempting to insert clip and duplicate it...');
 	
@@ -617,25 +616,13 @@ $.runScript = {
 			if (newClip !== null) {
 				$.writeln('New clip inserted into the third track: ' + thirdTrack.name);
 				
-				// Loop to duplicate and place the clip after the first one
-				var lastClipEndTime = startTime.seconds + clipDuration;
-					
 				// Duplicate and place the clip
-				for (var j = 1; j < numberOfDuplicates; j++) {
-					
-					var newTime = new Time();
-					newTime.seconds = lastClipEndTime; // Set new clip start time at the end of the previous clip
+				for (var j = 0; j < numberOfDuplicates; j++) {
+					// Loop to duplicate and place the clip after the first one
+					var newStartTime = startTime + j * clipDuration;
 					
 					// Insert the duplicate clip at the correct time
-					var duplicateClip = thirdTrack.insertClip(lastFrameJPG, newTime);
-
-					if (duplicateClip !== null) {
-						// Update lastClipEndTime to reflect the new clip's end time
-						lastClipEndTime += clipDuration;
-						$.writeln('Inserted duplicate clip ' + j + ' at time ' + newTime.seconds + ' seconds');
-					} else {
-						$.writeln('Failed to insert duplicate clip ' + j);
-					}
+					thirdTrack.insertClip(lastFrameJPG, newStartTime);
 				}
 	
 				$.writeln('Successfully duplicated and placed ' + numberOfDuplicates + ' clips.');
