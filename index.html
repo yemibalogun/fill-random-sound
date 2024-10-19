@@ -44,7 +44,20 @@
         function evalScript(script) {
             var cs = new CSInterface();
             cs.evalScript(script);
-        }	
+        }
+		
+		// Function to handle inserting audio into a specific track
+		function insertAudio() {
+				var trackNumber = document.getElementById('trackNumber').value;
+				var inPoint = document.getElementById('inPoint').value;
+				var outPoint = document.getElementById('outPoint').value;
+
+				if (trackNumber && inPoint && outPoint) {
+					evalScript(`$.runScript.insertAudioFromBinToRandomPosition(sequence, selectedBin, ${inPoint}, ${outPoint}, ${trackNumber})`);
+				} else {
+					alert("Please fill in all fields.");
+				}
+			}
 		</script>
 		
 	</head>
@@ -56,11 +69,29 @@
 				</span></a>
 		</div>
 		
-		<div id="section2" class="sectionID">
-			<button class="controlBg textStyle" id="btn_PPRO100" onClick="evalScript('$.runScript.importFolderStructure()')">Import Folders</button>
-			<button class="controlBg textStyle" id="btn_PPRO101" onClick="evalScript('$.runScript.processImportedFolders()')">Insert Audio</button>
-		</div>
-			  
+		<div style="color: aliceblue;" id="section2" class="sectionID">
+			<!-- Input fields for in point, out point, and track number -->
+			<div class="row">
+				<label for="inPoint">In Point:</label>
+				<input class="input-field" type="number" id="inPoint" placeholder="Enter in point" required>		
+			</div>
+
+			<div class="row">
+				<label for="outPoint">Out Point:</label>
+				<input class="input-field" type="number" id="outPoint" placeholder="Enter out point" required>
+			</div>
+
+			<div class="row">
+				<label for="trackNumber">Track Number:</label>
+				<input class="input-field" type="number" id="trackNumber" placeholder="Enter track number" required>
+			</div>
+
+			<div class="row">
+				<!-- Button to trigger the audio insertion -->
+			<button class="controlBg textStyle" id="btn_InsertAudio" onClick="insertAudio()">Insert Audio</button>
+			</div>
+			
+		</div> 
 			     
 	</body>
 	<script>

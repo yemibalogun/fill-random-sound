@@ -2,6 +2,15 @@
 	font-family: "LucidaGrande", sans-serif;
 }
 
+.row {
+	padding: 10px;
+}
+
+.input-field {
+	border-radius: 5%;
+	border: none;
+}
+
 p {
 	text-align:center;
 }

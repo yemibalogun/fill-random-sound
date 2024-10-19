@@ -29,13 +29,26 @@ $.runScript = {
 	
 		// Check if the target audio track exists
 		if (!targetAudioTrack) {
-			$.writeln('Error: Target audio track does not exist.');
+			var message = 'Error: Target audio track does not exist.';
+			$.writeln(message);
+			this.updateEventPanel(message); // Send error message to event panel
+			return;
+		}
+
+		// Get the items in the selected bin (audio files)
+		var binItems = selectedBin.children;
+		if (!binItems || binItems.numItems === 0) {
+			var message = 'Error: No items found in the selected bin.'
+			$.writeln(message);
+			this.updateEventPanel(message) // Send error message to event panel
 			return;
 		}
 
 		// Ensure inPoint and outPoint are valid
 		if (typeof inPoint !== 'number'  || typeof outPoint !== 'number' || inPoint >= outPoint) {
-			$.writeln('Error: Invalid in and out points.');
+			var message = 'Error: Invalid in and out points.';
+			$.writeln(message);
+			this.updateEventPanel(message) // Send error message to event panel
 			return;
 		}
 
@@ -55,17 +68,20 @@ $.runScript = {
 					$.writeln('Audio clip inserted successfully at: ' + randomTime);
 				
 				} catch (e) {
-					$.writeln('Error inserting audio clip: ' + e.name + ' - ' + e.message);
+					var message = 'Error inserting audio clip: ' + e.name + ' - ' + e.message;
+					$.writeln(message);
+					this.updateEventPanel(message);  // Send error message to event panel
 				}
 			} else {
 				$.writeln('Skipping non-audio item: ' + item.name);
 			}		 
 		}
 
-		$.writeln('Finished inserting audio clips.');
+		var completionMessage = 'Finished inserting audio clips.';
+		$.writeln(completionMessage);
+		this.updateEventPanel(completionMessage); // Notify user of successful completion
 	},
 		
-
 	updateEventPanel : function (message) {
 		app.setSDKEventMessage(message, 'info');
 		/*app.setSDKEventMessage('Here is some information.', 'info');
