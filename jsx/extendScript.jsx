@@ -519,57 +519,39 @@ $.runScript = {
 		}			
 	},
 	
-	replaceVideoInSequenceSecondTrack: function(sequence, mp4File, startTime) {
-		$.writeln('Starting replaceVideoInSequenceSecondTrack function');
+	insertAudioFromBinToRandomPosition: function(sequence, selectedBin, inPoint, outPoint) {
+		$.writeln('Starting insertAudioFromBinToRandomPosition function');
 		
-		var videoTracks = sequence.videoTracks;
 		var audioTracks = sequence.audioTracks;
+		var targetAudioTrack = audioTracks[1]; // Assuming you want to insert into the second audio track
 	
-		// Process only the first video and audio tracks
-		var secondTrack = videoTracks[1];
-		var secondAudio = audioTracks[1];
-		$.writeln('Processing second track: ' + secondTrack.name);
-	
-		// Check if there are any clips in the first track
-		if (secondTrack.clips.numItems > 0) {
-			$.writeln('Found ' + secondTrack.clips.numItems + ' videos in the second track. Removing all videos.');
-	
-			// Remove all clips from the second video and audio tracks
-			for (var i = secondTrack.clips.numItems - 1; i >= 0; i--) {
-				secondTrack.clips[i].remove(true, true);
-			}
-	
-			for (var j = secondAudio.clips.numItems - 1; j >= 0; j--) {
-				secondAudio.clips[j].remove(true, true);
-			}
-	
-			$.writeln('All clips removed from ' + secondTrack.name);
-		} else {
-			$.writeln('Second track is empty. Ready to add new video.');
-		}
-
-		$.writeln('Type of mp4 File: ' + typeof(mp4File));
-	
-		// Ensure the new video was imported correctly before proceeding
-		if (!mp4File) {
-			$.writeln('Error: mp4File is null or undefined.');
+		// Check if the target audio track exists
+		if (!targetAudioTrack) {
+			$.writeln('Error: Target audio track does not exist.');
 			return;
 		}
-	
-		// Insert the new video into the first track at 51.79 seconds and trim to 5.835 seconds
-		try {
-			// var startTime = 51.19; // Start at the beginning of the sequence
-			
-			$.writeln('Attempting to insert clip');
 
-			// Insert the first clip
-			var newClip = secondTrack.insertClip(mp4File, startTime);
-			$.writeln('Type of newClip is: ' + typeof(newClip));
-			$.writeln('mp4File inserted successfully.')
-	
-		} catch (e) {
-			$.writeln('Error inserting new image: ' + e.message);
-		}	
+		// Ensure inPoint and outPoint are valid
+		if (typeof inPoint !== 'number'  || typeof outPoint !== 'number' || inPoint >= outPoint) {
+			$.writeln('Error: Invalid in and out points.');
+			return;
+		}
+
+		// Iterate through each item in the bin
+		for (var i = 0; i < binItems.numItems; i++) {
+			var item = binItems[i];
+
+			// Check if the item is a valid audio file
+			if (item.type === ProjectItemType.CLIP && item.mediaType === 'Audio') {
+				// Generate a random time betweeen inPoint and outPoint
+				var randomTime = inPoint + (Math.random() * (outPoint - inPoint));
+				$.writeln('Inserting audio clip at random time: ' + randomTime)
+			}
+		}
+		
+		
+		
+		
 
 	},
 

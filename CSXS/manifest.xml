@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="6.0" ExtensionBundleId="com.yourcompany.SvenPanel" ExtensionBundleVersion="1.0.0" ExtensionBundleName="SvenPanel" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest Version="6.0" ExtensionBundleId="com.yourcompany.SoundFiller" ExtensionBundleVersion="1.0.0" ExtensionBundleName="SoundFiller" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<ExtensionList>
-		<Extension Id="com.yourcompany.SvenPanel" Version="1.0" />
+		<Extension Id="com.yourcompany.SoundFiller" Version="1.0" />
 	</ExtensionList>
 	<ExecutionEnvironment>
 		<HostList>
@@ -16,7 +16,7 @@
 	</ExecutionEnvironment>
 
 	<DispatchInfoList>
-		<Extension Id="com.yourcompany.SvenPanel">
+		<Extension Id="com.yourcompany.SoundFiller">
 			<DispatchInfo >
 				<Resources>
 					<MainPath>./index.html</MainPath>
@@ -31,7 +31,7 @@
 				</Lifecycle>
 				<UI>
 					<Type>Panel</Type>
-					<Menu>BrandPeak Panel1</Menu>
+					<Menu>SoundFiller</Menu>
 					<Geometry>
 						<Size>
 							<Height>250</Height>
