@@ -17,7 +17,6 @@
 			
 			function runAll() {
 				var cs = new CSInterface;
-								
 				cs.evalScript('$.runScript.alert()')
 			}
 
@@ -27,7 +26,7 @@
                 document.getElementById('username').textContent = result;
             });
 
-            // Example of setting version and sequence info
+            // Set version and sequence info
             cs.evalScript('$.runScript.getVersion()', function(result) {
                 document.getElementById('version_string').textContent = result;
             });
@@ -39,25 +38,49 @@
             cs.evalScript('$.runScript.getProxiesStatus()', function(result) {
                 document.getElementById('proxies_on').textContent += result;
             });
+
+			// Populate bins dropdown
+			populateBinsDropdown();
         }
 
         function evalScript(script) {
             var cs = new CSInterface();
             cs.evalScript(script);
-        }
-		
-		// Function to handle inserting audio into a specific track
-		function insertAudio() {
-				var trackNumber = document.getElementById('trackNumber').value;
-				var inPoint = document.getElementById('inPoint').value;
-				var outPoint = document.getElementById('outPoint').value;
+        }	
 
-				if (trackNumber && inPoint && outPoint) {
-					evalScript(`$.runScript.insertAudioFromBinToRandomPosition(sequence, selectedBin, ${inPoint}, ${outPoint}, ${trackNumber})`);
-				} else {
-					alert("Please fill in all fields.");
-				}
+		// Call the ExtendScript to get all bins
+        function populateBinsDropdown() {
+		var cs = new CSInterface();
+		cs.evalScript('$.runScript.getBins()', function(bins) {
+			console.log("Bins retrieved: ", bins); // Log the retrieved bins
+			try {
+				var binsList = JSON.parse(bins); // Expecting a JSON string from ExtendScript
+				var select = document.getElementById('binSelect');
+				select.innerHTML = ''; // Clear existing options
+
+				// Add each bin to the dropdown
+				binsList.forEach(function(bin) {
+					var option = document.createElement('option');
+					option.value = bin.id; // Use bin ID
+					option.text = bin.name;
+					select.appendChild(option);
+				});
+			} catch (error) {
+				console.error("Error parsing bins: ", error); // Log parsing errors
 			}
+		});
+	}
+
+
+		function insertAudio() {
+			// Get the track number from the input field
+			var trackNumber = document.getElementById('trackNumberInput').value;
+			var selectedBinId = document.getElementById('binSelect').value;
+            
+			// Call the insertAudioFromBinToMarkedPoints function with the track number
+			var script = `$.runScript.insertAudioFromBinToMarkedPoints(${trackNumber}, "${selectedBinId}")`;
+			evalScript(script);
+		}
 		</script>
 		
 	</head>
@@ -69,31 +92,24 @@
 				</span></a>
 		</div>
 		
-		<div style="color: aliceblue;" id="section2" class="sectionID">
-			<!-- Input fields for in point, out point, and track number -->
+		<div id="section2" class="sectionID">
 			<div class="row">
-				<label for="inPoint">In Point:</label>
-				<input class="input-field" type="number" id="inPoint" placeholder="Enter in point" required>		
+				<!-- Input field for track number -->
+				<label for="trackNumberInput">Track Number:</label>
+				<input type="number" id="trackNumberInput" min="1" placeholder="Enter track number" />
 			</div>
 
 			<div class="row">
-				<label for="outPoint">Out Point:</label>
-				<input class="input-field" type="number" id="outPoint" placeholder="Enter out point" required>
+				<!-- Dropdown for selecting bins -->
+				<label for="binSelect">Select Bin:</label>
+				<select id="binSelect"></select>
 			</div>
 
-			<div class="row">
-				<label for="trackNumber">Track Number:</label>
-				<input class="input-field" type="number" id="trackNumber" placeholder="Enter track number" required>
-			</div>
-
-			<div class="row">
-				<!-- Button to trigger the audio insertion -->
-			<button class="controlBg textStyle" id="btn_InsertAudio" onClick="insertAudio()">Insert Audio</button>
-			</div>
-			
-		</div> 
-			     
+			<!-- Button to insert audio into the specified track -->
+			<button class="controlBg textStyle" id="btn_PPRO101" onClick="insertAudio()">Insert Audio</button>
+		</div>   
 	</body>
+
 	<script>
 		document.body.onbeforeunload = function () {
 			var csInterface 	= new CSInterface();

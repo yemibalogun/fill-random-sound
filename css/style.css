@@ -6,6 +6,10 @@
 	padding: 10px;
 }
 
+.sectionID {
+	color: #f0f0f0;
+}
+
 .input-field {
 	border-radius: 5%;
 	border: none;
