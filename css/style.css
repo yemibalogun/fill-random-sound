@@ -1,75 +1,73 @@
-* {
-	font-family: "LucidaGrande", sans-serif;
+body {
+	font-family: Arial, sans-serif;
 }
-
-.row {
+.container {
+	color: aliceblue;
 	padding: 10px;
 }
-
-.sectionID {
-	color: #f0f0f0;
+.row {
+	margin: 10px 0;
 }
-
-.input-field {
-	border-radius: 5%;
+label {
+	margin-right: 10px;
+	font-size: smaller;
+}
+select, input {
+	padding: 5px;
+	font-size: 13px;
 	border: none;
 }
 
-p {
-	text-align:center;
-}
-
-a {
-        color: #c7e3ff;
-		text-decoration: none;
-}
-
-a:hover {
-        color: #ffffff;
-		text-decoration: none;
-}
-
-.div {
-	margin-bottom: 2rem;
-}
-
-button
-{
-	font-size:12px;
-	border:1px solid;
-	border-radius: 10px;
-	height:30px;
-	margin: 5px;
-	transition: .3s;
-}
-
-button:hover
-{
-	font-size:12px;
-	border:1px solid;
-	border-radius: 10px;
-	height:30px;
-	margin: 5px;
+button {
+	padding: 10px 20px;
+	background-color: #007bff;
 	color: white;
-	background-color: rgb(109, 109, 109);
+	border: none;
+	cursor: pointer;
+	border-radius: 5px;
+}
+button:hover {
+	padding: 10px 20px;
+	background-color: #006adc;
+	color: white;
+	border: none;
+	cursor: pointer;
+	border-radius: 5px;
+	transition: 0.3;
 }
 
-input[type=text]
-{
-	height:12px;
+button:disabled {
+	background-color: #ccc;
+	cursor: not-allowed;
+}
+.error {
+	color: red;
+	font-size: 12px;
 }
 
-#content {
-	margin-right:auto;
-	margin-left:auto;
-	vertical-align:middle;
-	width:100%;
+.message {
+	padding: 10px;
+	margin: 10px 0;
+	border-radius: 4px;
 }
 
-#content ul {
-	padding:0px;
+.error {
+	background-color: #ffebee;
+	color: #c62828;
+	border: 1px solid #ffcdd2;
 }
 
-#content ul li {
-	margin:3px 0px 3px 0px;
+.success {
+	background-color: #e8f5e9;
+	color: #2e7d32;
+	border: 1px solid #c8e6c9;
+}
+
+.loading {
+	opacity: 0.7;
+	cursor: not-allowed;
+}
+
+.row {
+	margin-bottom: 15px;
 }

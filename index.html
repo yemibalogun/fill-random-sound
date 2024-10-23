@@ -1,132 +1,238 @@
 <!DOCTYPE html>
-<!-- This document forms the dockable panel. The button is the <input> tag below. The <style> formats the button. 
-
-		The extendscript is called through the <script type="text/javascript"> tag, which then routes it to use the adobe_cep_.evalScript to interpret that Javascript into Extendscript -->
-
 <html>
-	<head>
-		<meta charset="utf-8">
-		<title>Alert Panel</title>
-		<script src="./ext.js"></script>
-		<script src="./lib/CSInterface.js"></script>
-		<script src="./lib/jquery-1.9.1.js"></script>
-		<script src="./lib/Vulcan.js"></script>
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-		<link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css">		
-		<script type="text/javascript">
-			
-			function runAll() {
-				var cs = new CSInterface;
-				cs.evalScript('$.runScript.alert()')
-			}
+    <head>
+        <meta charset="utf-8">
+        <title>Alert Panel</title>
+        <script src="./ext.js"></script>
+        <script src="./lib/CSInterface.js"></script>
+        <script src="./lib/jquery-1.9.1.js"></script>
+        <script src="./lib/Vulcan.js"></script>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+        <link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css">        
 
-			function onLoaded() {
-            var cs = new CSInterface();
-            cs.evalScript('$.runScript.initialize()', function(result) {
-                document.getElementById('username').textContent = result;
-            });
+        <script type="text/javascript">
+            // Initialize CSInterface globally
+            let cs = new CSInterface();
 
-            // Set version and sequence info
-            cs.evalScript('$.runScript.getVersion()', function(result) {
-                document.getElementById('version_string').textContent = result;
-            });
+            // Add loading state management
+            let isLoading = false;
 
-            cs.evalScript('$.runScript.getActiveSequence()', function(result) {
-                document.getElementById('active_seq').textContent = result;
-            });
+            function setLoading(loading) {
+                isLoading = loading;
+                const button = document.getElementById('btn_insertAudio');
+                if (loading) {
+                    button.disabled = true;
+                    button.textContent = 'Processing...';
+                } else {
+                    button.disabled = false;
+                    button.textContent = 'Insert Audio';
+                }
+            }
 
-            cs.evalScript('$.runScript.getProxiesStatus()', function(result) {
-                document.getElementById('proxies_on').textContent += result;
-            });
+            function runAll() {
+                try {
+                    cs.evalScript('$.runScript.alert()');
+                } catch (error) {
+                    displayError('Error running script: ' + error.message);
+                }
+            }
 
-			// Populate bins dropdown
-			populateBinsDropdown();
-        }
+            async function onLoaded() {
+                try {
+                    await populateBinsDropdown();
+                    // Enable the insert button only if we have bins
+                    const dropdown = document.getElementById('binSelect');
+                    document.getElementById('btn_insertAudio').disabled = dropdown.options.length <= 1;
+                } catch (error) {
+                    displayError('Error initializing panel: ' + error.message);
+                }
+            }
 
-        function evalScript(script) {
-            var cs = new CSInterface();
-            cs.evalScript(script);
-        }	
+            function evalScript(script) {
+                return new Promise((resolve, reject) => {
+                    cs.evalScript(script, (result) => {
+                        if (result === 'undefined' || result === 'EvalScript error.') {
+                            reject(new Error('Script evaluation failed'));
+                        } else {
+                            resolve(result);
+                        }
+                    });
+                });
+            }
 
-		// Call the ExtendScript to get all bins
-        function populateBinsDropdown() {
-		var cs = new CSInterface();
-		cs.evalScript('$.runScript.getBins()', function(bins) {
-			console.log("Bins retrieved: ", bins); // Log the retrieved bins
-			try {
-				var binsList = JSON.parse(bins); // Expecting a JSON string from ExtendScript
-				var select = document.getElementById('binSelect');
-				select.innerHTML = ''; // Clear existing options
+            async function getActiveBinName() {
+                try {
+                    const result = await evalScript('getActiveBin()');
+                    if (result) {
+                        console.log("Active Bin: ", result);
+                        document.getElementById('activeBinDisplay').textContent = "Active Bin: " + result;
+                    } else {
+                        throw new Error("No active bin found.");
+                    }
+                } catch (error) {
+                    displayError(error.message);
+                }
+            }
 
-				// Add each bin to the dropdown
-				binsList.forEach(function(bin) {
-					var option = document.createElement('option');
-					option.value = bin.id; // Use bin ID
-					option.text = bin.name;
-					select.appendChild(option);
-				});
-			} catch (error) {
-				console.error("Error parsing bins: ", error); // Log parsing errors
-			}
-		});
-	}
+            async function insertAudio() {
+                if (isLoading) return;
 
+                const trackNumber = document.getElementById('trackNumberInput').value;
+                const selectedBin = document.getElementById('binSelect').value;
 
-		function insertAudio() {
-			// Get the track number from the input field
-			var trackNumber = document.getElementById('trackNumberInput').value;
-			var selectedBinId = document.getElementById('binSelect').value;
-            
-			// Call the insertAudioFromBinToMarkedPoints function with the track number
-			var script = `$.runScript.insertAudioFromBinToMarkedPoints(${trackNumber}, "${selectedBinId}")`;
-			evalScript(script);
-		}
-		</script>
-		
-	</head>
+                if (!validateInputs(trackNumber, selectedBin)) return;
 
-	<body onLoad="onLoaded()">
-		<div class="div">
-			<a href="javascript:history.go(0)"><span class="material-symbols-outlined">
-				refresh
-				</span></a>
-		</div>
-		
-		<div id="section2" class="sectionID">
-			<div class="row">
-				<!-- Input field for track number -->
-				<label for="trackNumberInput">Track Number:</label>
-				<input type="number" id="trackNumberInput" min="1" placeholder="Enter track number" />
-			</div>
+                try {
+                    setLoading(true);
+                    // Pass both trackNumber and selectedBin to the ExtendScript function
+                    const result = await evalScript(
+                        `JSON.stringify($.runScript.insertAudioFromBinToMarkedPoints(${trackNumber}, "${selectedBin}"))`
+                    );
+                    
+                    const response = JSON.parse(result);
+                    if (response.success) {
+                        displaySuccess(response.message);
+                    } else {
+                        displayError(response.message);
+                    }
+                } catch (error) {
+                    $.writeln('Failed to insert audio: ' + error.message);
+                } finally {
+                    setLoading(false);
+                }
+            }
 
-			<div class="row">
-				<!-- Dropdown for selecting bins -->
-				<label for="binSelect">Select Bin:</label>
-				<select id="binSelect"></select>
-			</div>
+            async function populateBinsDropdown() {
+                try {
+                    setLoading(true);
+                    const result = await evalScript('$.runScript.getAllBins()');
+                    const binsArray = JSON.parse(result);
+                    const dropdown = document.getElementById('binSelect');
+                    
+                    dropdown.innerHTML = '<option value="">-- Select a Bin --</option>';
 
-			<!-- Button to insert audio into the specified track -->
-			<button class="controlBg textStyle" id="btn_PPRO101" onClick="insertAudio()">Insert Audio</button>
-		</div>   
-	</body>
+                    binsArray.forEach(bin => {
+                        const option = document.createElement('option');
+                        option.value = bin;
+                        option.textContent = bin;
+                        dropdown.appendChild(option);
+                    });
 
-	<script>
-		document.body.onbeforeunload = function () {
-			var csInterface 	= new CSInterface();
-			var OSVersion 		= csInterface.getOSInformation();
-			var appVersion 		= csInterface.hostEnvironment.appVersion;
-			var versionAsFloat	= parseFloat(appVersion);
-			
-			csInterface.evalScript('$.runScript.closeLog()');
-	
-			if (versionAsFloat < 10.3) {
-				var path = "file:///Library/Application Support/Adobe/CEP/extensions/PProPanel/payloads/onbeforeunload.html";
-	
-				if (OSVersion.indexOf("Windows") >= 0) {
-					path = "file:///C:/Program%20Files%20(x86)/Common%20Files/Adobe/CEP/extensions/PProPanel/payloads/onbeforeunload.html"
-				}
-				csInterface.openURLInDefaultBrowser(path);
-			}
-		};
-	</script>
+                    // Enable/disable insert button based on selection
+                    dropdown.addEventListener('change', () => {
+                        validateInputs(document.getElementById('trackNumberInput').value, dropdown.value);
+                    });
+                } catch (error) {
+                    displayError('Error loading bins: ' + error.message);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            function validateInputs(trackNumber, selectedBin) {
+                clearMessages();
+                const validationErrors = [];
+
+                if (!selectedBin) {
+                    validationErrors.push("Please select a bin.");
+                }
+
+                if (!trackNumber || trackNumber <= 0) {
+                    validationErrors.push("Please enter a valid track number.");
+                }
+
+                if (validationErrors.length > 0) {
+                    displayError(validationErrors.join(' '));
+                    return false;
+                }
+
+                return true;
+            }
+
+            function displayError(message) {
+                const errorDiv = document.getElementById('error_message');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                errorDiv.className = 'error message';
+            }
+
+            function displaySuccess(message) {
+                const successDiv = document.getElementById('success_message');
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                successDiv.className = 'success message';
+                
+                // Auto-hide success message after 3 seconds
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                }, 3000);
+            }
+
+            function clearMessages() {
+                document.getElementById('error_message').style.display = 'none';
+                document.getElementById('success_message').style.display = 'none';
+            }
+        </script>
+
+    </head>
+
+    <body onLoad="onLoaded()">
+        <div class="container">
+            <div>
+                <a href="javascript:void(0)" onclick="populateBinsDropdown()">
+                    <span class="material-symbols-outlined">refresh</span>
+                </a>
+            </div>
+
+            <div id="section2">
+                <div class="row">
+                    <label for="binSelect">Select Bin:</label>
+                    <select id="binSelect">
+                        <option value="">-- Select a Bin --</option>
+                    </select>
+                </div>
+                
+                <div class="row">
+                    <label for="trackNumberInput">Track Number:</label>
+                    <input type="number" 
+                           id="trackNumberInput" 
+                           min="1" 
+                           placeholder="Enter track number" 
+                           style="width: 50px;"
+                           oninput="validateInputs(this.value, document.getElementById('binSelect').value)" />
+                </div>
+
+                <div class="row">
+                    <button class="controlBg textStyle" 
+                            id="btn_insertAudio" 
+                            onClick="insertAudio()" 
+                            disabled>Insert Audio</button>
+                </div>
+
+                <div id="error_message" class="error message" style="display:none;"></div>
+                <div id="success_message" class="success message" style="display:none;"></div>
+            </div>
+        </div>
+    </body>
+
+    <script>
+        document.body.onbeforeunload = async function() {
+            try {
+                const OSVersion = cs.getOSInformation();
+                const appVersion = parseFloat(cs.hostEnvironment.appVersion);
+
+                await evalScript('$.runScript.closeLog()');
+
+                if (appVersion < 10.3) {
+                    const path = OSVersion.indexOf("Windows") >= 0
+                        ? "file:///C:/Program%20Files%20(x86)/Common%20Files/Adobe/CEP/extensions/PProPanel/payloads/onbeforeunload.html"
+                        : "file:///Library/Application Support/Adobe/CEP/extensions/PProPanel/payloads/onbeforeunload.html";
+                    
+                    cs.openURLInDefaultBrowser(path);
+                }
+            } catch (error) {
+                console.error('Error during unload:', error);
+            }
+        };
+    </script>
 </html>

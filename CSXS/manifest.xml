@@ -34,8 +34,8 @@
 					<Menu>SoundFiller</Menu>
 					<Geometry>
 						<Size>
-							<Height>250</Height>
-							<Width>250</Width>
+							<Height>260</Height>
+							<Width>320</Width>
 						</Size>
 					</Geometry>
 				</UI>
