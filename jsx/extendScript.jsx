@@ -265,52 +265,99 @@ $.runScript = {
 		return JSON.stringify(binsArray);
 	},
 
-	insertClipsRandomlyWithSpacing: function(clips, track, inPoint, outPoint) {
+	insertClipsRandomlyWithSpacing: function (clips, track, inPoint, outPoint) {
 		var insertedCount = 0;
+		var spacing = 0.5; // Fixed 0.5 second spacing between clips
+		var currentPosition = inPoint;
 		var duration = outPoint - inPoint;
 		
 		if (clips.length === 0 || duration <= 0) {
-			$.writeln('Error: No clips to insert or invalid duration.');
+			$.writeln('Error: No clips to insert or invalid duration. Duration: ' + duration);
 			return insertedCount;
 		}
 		
 		// Function to shuffle an array (Fisher-Yates shuffle)
 		function shuffleArray(array) {
-			for (var i = array.length - 1; i > 0; i--) {
+			var shuffled = array.slice(); // Create a copy to avoid modifying original
+			for (var i = shuffled.length - 1; i > 0; i--) {
 				var j = Math.floor(Math.random() * (i + 1));
-				var temp = array[i];
-				array[i] = array[j];
-				array[j] = temp;
+				var temp = shuffled[i];
+				shuffled[i] = shuffled[j];
+				shuffled[j] = temp;
 			}
-			return array; // Return the shuffled array
+			return shuffled;
+		}
+		
+		// Function to get clip duration
+		function getClipDuration(clip) {
+			try {
+				// Try to get the media duration using Time objects
+				var tempPosition = currentPosition;
+				track.insertClip(clip, tempPosition);
+				var insertedClip = track.clips[track.clips.length - 1];
+				
+				// Get numerical values from Time objects
+				var clipDuration = insertedClip.duration.seconds;
+				$.writeln('Raw duration in seconds: ' + clipDuration);
+				
+				// Remove the temporary clip
+				insertedClip.remove(false, false);
+				
+				$.writeln('Calculated duration: ' + clipDuration + ' for clip: ' + clip.name);
+				return clipDuration;
+				
+			} catch (e) {
+				$.writeln('Error getting clip duration: ' + e.message);
+				return 0;
+			}
 		}
 		
 		// Shuffle the clips array
 		var shuffledClips = shuffleArray(clips);
 		
-		// Calculate even spacing between clips
-		var totalSpacing = duration / shuffledClips.length;
-    
+		$.writeln('Starting insertion at inPoint: ' + inPoint + ' with total duration: ' + duration);
+		
+		// Insert clips until we run out of space or clips
 		for (var i = 0; i < shuffledClips.length; i++) {
 			try {
-				var clipDuration = shuffledClips[i].getOutPoint() - shuffledClips[i].getInPoint();
-				var startTime = inPoint + (i * totalSpacing);
+				var clip = shuffledClips[i];
+				var clipDuration = getClipDuration(clip);
+				
+				// If we couldn't get a valid duration, skip this clip
+				if (!clipDuration || clipDuration <= 0) {
+					$.writeln('Skipping clip due to invalid duration: ' + clip.name);
+					continue;
+				}
+				
+				// Check if this clip plus spacing would fit before outPoint
+				if ((currentPosition + clipDuration + spacing) > outPoint) {
+					$.writeln('Stopping: Next clip would exceed outPoint. Current position: ' + 
+							 currentPosition + ', Clip duration: ' + clipDuration);
+					break;
+				}
 				
 				// Debug log for insertion details
-				$.writeln('Inserting clip ' + (i + 1) + ' at time: ' + startTime);
+				$.writeln('Inserting clip ' + (i + 1) + ' at time: ' + currentPosition + 
+						 ' with duration: ' + clipDuration);
 				
-				// Insert the clip into the track
-				track.insertClip(shuffledClips[i], startTime);
-				track.clips[track.clips.length - 1].start = startTime;  // Explicitly set the start time
-				
+				// Insert the clip at the current position
+				track.insertClip(clip, currentPosition);
+				track.clips[track.clips.length - 1].start = currentPosition;
 				insertedCount++;
+				
+				// Update position for next clip, adding the spacing
+				currentPosition += clipDuration + spacing;
+				
+				$.writeln('Clip inserted successfully. Next position will be: ' + currentPosition);
+				
 			} catch (e) {
 				$.writeln('Error inserting clip ' + i + ': ' + e.message);
 			}
 		}
 		
+		$.writeln('Successfully inserted ' + insertedCount + ' clips starting from inPoint: ' + inPoint);
 		return insertedCount;
-	},	
+	},
 	
 	updateEventPanel: function(message) {
 		if (app.setSDKEventMessage) {
